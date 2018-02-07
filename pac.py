@@ -11,3 +11,6 @@ ch.selectCourse(course_selection)
 ch.showAssignmentSelection()
 assn_selection = int(input("\nWhich assignment would you like to select? "))
 ch.selectAssignment(assn_selection)
+submissions = ch.getSubmissions()
+for s in submissions:
+	print(s.assignment_id, s.user_id, s.url)
