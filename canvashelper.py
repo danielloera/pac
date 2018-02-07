@@ -1,7 +1,7 @@
 import secret
 from canvasapi import Canvas
 
-API_URL = "https://canvas.instructure.com"
+default_api_url = "https://utexas.instructure.com"
 
 # Courses helper will inspect. Must be updated every semester.
 default_course_ids = [10170000001214449, 10170000001214450]
@@ -9,10 +9,11 @@ default_course_ids = [10170000001214449, 10170000001214450]
 class CanvasHelper:
 
     def __init__(self,
+                api_url=default_api_url,
                 api_token=secret.API_TOKEN,
                 course_ids=default_course_ids):
         self.course_ids = course_ids
-        self.canvas = Canvas(API_URL, secret.API_TOKEN)
+        self.canvas = Canvas(api_url, api_token)
         self.courses = {idx:self.canvas.get_course(course) for idx, course in 
                         zip(range(len(course_ids)), course_ids)}
         self.assignments = {}
@@ -28,13 +29,8 @@ class CanvasHelper:
         self.selected_course = self.courses[selection]
 
     def updateAssignmentSelection(self):
-
-        # Used solely to retreive the list of assignments.
-        # At the moment, course.get_assignments() is not working properly. 
-        tempUser = self.selected_course.get_users()[0]
-
         idx = 0
-        for assn in tempUser.get_assignments(self.selected_course):
+        for assn in self.selected_course.get_assignments():
             self.assignments[idx] = assn
             idx += 1
 
@@ -45,6 +41,9 @@ class CanvasHelper:
         for aidx, assn in self.assignments.items():
             print(str(aidx) + ":", assn.name)
 
-
     def selectAssignment(self, selection):
         self.selected_assignment = self.assignments[selection]
+
+    def getSubmissions(self):
+        return self.selected_course.list_submissions(self.selected_assignment)
+            
