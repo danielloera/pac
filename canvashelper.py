@@ -1,4 +1,5 @@
 import secret
+import wget
 from canvasapi import Canvas
 
 default_api_url = "https://utexas.instructure.com"
@@ -7,6 +8,9 @@ default_api_url = "https://utexas.instructure.com"
 default_course_ids = [10170000001214449, 10170000001214450]
 
 class CanvasHelper:
+
+    ATTACHMENTS_ATTR = 'attachments'
+    URL_ATTR = 'url'
 
     def __init__(self,
                 api_url=default_api_url,
@@ -35,7 +39,6 @@ class CanvasHelper:
             idx += 1
 
     def showAssignmentSelection(self):
-
         self.updateAssignmentSelection()
         print("\nAvailable Assignments:")
         for aidx, assn in self.assignments.items():
@@ -45,5 +48,10 @@ class CanvasHelper:
         self.selected_assignment = self.assignments[selection]
 
     def getSubmissions(self):
-        return self.selected_course.list_submissions(self.selected_assignment)
+        for sub in self.selected_course.list_submissions(
+                    self.selected_assignment, include=['user']):
+            # TODO(danielloera) Check for attachments, if not, look at text field
+            link = sub.attributes['attachments'][-1]['url']
+            print(link)
+
             
