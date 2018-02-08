@@ -1,6 +1,7 @@
 import secret
-import wget
 from canvasapi import Canvas
+import os
+import wget
 
 default_api_url = "https://utexas.instructure.com"
 
@@ -24,6 +25,13 @@ class CanvasHelper:
         self.selected_course = None
         self.selected_assignment = None
 
+    def __bodyToText__(self, body):
+        span_replace = body.replace("<span>", "  ")
+        span_replace = span_replace.replace("</span>", "  ")
+        pre_replace = span_replace.replace("<pre>", "")
+        pre_replace = pre_replace.replace("</pre>", "")
+        return pre_replace.replace("<br>", "\n")
+
     def showCourseSelection(self):
         print("\nAvailable Courses:")
         for cidx, course in self.courses.items():
@@ -31,6 +39,9 @@ class CanvasHelper:
 
     def selectCourse(self, selection):
         self.selected_course = self.courses[selection]
+
+    def getUsers(self):
+        return self.selected_course.get_users()
 
     def updateAssignmentSelection(self):
         idx = 0
@@ -48,10 +59,22 @@ class CanvasHelper:
         self.selected_assignment = self.assignments[selection]
 
     def getSubmissions(self):
+        print("Downloading submissions...")
+        directory_name = str(self.selected_assignment.name) + " Submissions"
+        if not os.path.exists(directory_name):
+            os.makedirs(directory_name)
         for sub in self.selected_course.list_submissions(
-                    self.selected_assignment, include=['user']):
-            # TODO(danielloera) Check for attachments, if not, look at text field
-            link = sub.attributes['attachments'][-1]['url']
-            print(link)
-
-            
+                    self.selected_assignment):
+            new_filename = str(sub.user_id) + ".py" 
+            if self.ATTACHMENTS_ATTR in sub.attributes:
+                # Get the last submission attachment download url.
+                url = sub.attributes[self.ATTACHMENTS_ATTR][-1][self.URL_ATTR]
+                raw_filename = wget.download(url)
+                os.rename(
+                        raw_filename, directory_name + "/" + new_filename)
+            elif sub.body is not None:
+                text = self.__bodyToText__(sub.body)
+                new_file = open(directory_name + "/" + new_filename, "w")
+                new_file.write(text)
+        print()
+        return directory_name
