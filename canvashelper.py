@@ -95,10 +95,11 @@ class CanvasHelper:
         return directory_name
 
     def postSubmissionGrade(self, user, grade):
-        url = self.api_url + "courses/{}/assignments/{}/submissions/{}".format(
-            self.selected_course.id, self.selected_assignment.id, user.id)
+        url = (self.api_url + 
+            "api/v1/courses/{}/assignments/{}/submissions/{}".format(
+            self.selected_course.id, self.selected_assignment.id, user.id))
         headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
-        payload = {'submission[posted_grade]': grade}
+        payload = {'submission': {'posted_grade': grade}}
         response = requests.put(url, json=payload, headers=headers)
         print(user.name, user.id)
         test = open('test.html', 'w')
