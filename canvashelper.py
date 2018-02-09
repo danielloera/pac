@@ -58,23 +58,31 @@ class CanvasHelper:
     def selectAssignment(self, selection):
         self.selected_assignment = self.assignments[selection]
 
+    def getAssignment(self):
+        return self.selected_assignment
+
     def getSubmissions(self):
         print("Downloading submissions...")
         directory_name = str(self.selected_assignment.name) + " Submissions"
         if not os.path.exists(directory_name):
             os.makedirs(directory_name)
+        else:
+            print(
+                "Submissions already downloaded. Delete '{}' to redownload."
+                .format(directory_name))
+            return directory_name
         for sub in self.selected_course.list_submissions(
-                    self.selected_assignment):
+                self.selected_assignment):
             new_filename = str(sub.user_id) + ".py" 
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
                 url = sub.attributes[self.ATTACHMENTS_ATTR][-1][self.URL_ATTR]
                 raw_filename = wget.download(url)
                 os.rename(
-                        raw_filename, directory_name + "/" + new_filename)
+                    raw_filename, directory_name + "/" + new_filename)
             elif sub.body is not None:
                 text = self.__bodyToText__(sub.body)
-                new_file = open(directory_name + "/" + new_filename, "w")
-                new_file.write(text)
+                with open(directory_name + "/" + new_filename, "w") as new_file:
+                    new_file.write(text)
         print()
         return directory_name
