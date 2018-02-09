@@ -11,7 +11,7 @@ class PythonGrader:
         self.expected_output = "default"
         self.line_count_mode = None
         self.max_lines = 0
-        self.args = ''
+        self.args = ""
         self.default_grade = "0"
 
     def setExpectedOutput(self, text):
@@ -33,7 +33,7 @@ class PythonGrader:
             stdin=subprocess.PIPE)
 
     def __evaluateGrade__(self, output):
-        grade_scheme = {True: '100',
+        grade_scheme = {True: str(self.assignment.points_possible),
                         False: self.default_grade}
         if self.line_count_mode:
             return grade_scheme[len(output.split("\n")) <= self.max_lines]

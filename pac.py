@@ -27,4 +27,5 @@ args = input("List arguments for program: ")
 pg.setArguments(args)
 grades = pg.gradeSubmissions()
 for user, grade in grades.items():
-	print(user.name, grade)
+	ch.postSubmissionGrade(user, grade)
+	break

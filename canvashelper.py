@@ -1,9 +1,11 @@
 import secret
 from canvasapi import Canvas
+import json
+import requests
 import os
 import wget
 
-default_api_url = "https://utexas.instructure.com"
+default_api_url = "https://utexas.instructure.com/"
 
 # Courses helper will inspect. Must be updated every semester.
 default_course_ids = [10170000001214449, 10170000001214450]
@@ -19,6 +21,10 @@ class CanvasHelper:
                 course_ids=default_course_ids):
         self.course_ids = course_ids
         self.canvas = Canvas(api_url, api_token)
+        self.api_url = api_url
+        self.api_token = api_token
+        # Needed to manually upload grades. 
+        # ucfopen API does not currently support this natively.
         self.courses = {idx:self.canvas.get_course(course) for idx, course in 
                         zip(range(len(course_ids)), course_ids)}
         self.assignments = {}
@@ -63,7 +69,8 @@ class CanvasHelper:
 
     def getSubmissions(self):
         print("Downloading submissions...")
-        directory_name = str(self.selected_assignment.name) + " Submissions"
+        directory_name = (str(self.selected_course.id) + " " +
+                            self.selected_assignment.name + " Submissions")
         if not os.path.exists(directory_name):
             os.makedirs(directory_name)
         else:
@@ -86,3 +93,14 @@ class CanvasHelper:
                     new_file.write(text)
         print()
         return directory_name
+
+    def postSubmissionGrade(self, user, grade):
+        url = self.api_url + "courses/{}/assignments/{}/submissions/{}".format(
+            self.selected_course.id, self.selected_assignment.id, user.id)
+        headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
+        payload = {'submission[posted_grade]': grade}
+        response = requests.put(url, json=payload, headers=headers)
+        print(user.name, user.id)
+        test = open('test.html', 'w')
+        print(response.status_code)
+        test.write(response.content.decode('utf-8'))
