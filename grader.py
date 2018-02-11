@@ -50,17 +50,16 @@ class PythonGrader:
                 grades[user] = self.default_grade
                 print(user_str, "has no submission. Default grade.")
                 continue
-            proc = self.__createProc__('python2', submission_filename)
+            proc = self.__createProc__('python3', submission_filename)
             output, err = proc.communicate(input=self.args)
             if err.decode("utf-8") != "":
-                proc = self.__createProc__('python3', submission_filename)
+                proc = self.__createProc__('python2', submission_filename)
                 output, err = proc.communicate(input=self.args)
                 err = err.decode("utf-8")
                 if err != "":
                     grades[user] = self.default_grade
                     print(user_str,
                         "program fails in python2 and python3. Default grade.\n")
-                    print("Error:\n", err, "\n")
                     continue
             grades[user] = self.__evaluateGrade__(output.decode("utf-8"))
         return grades
