@@ -83,7 +83,7 @@ class CanvasHelper:
             new_filename = str(sub.user_id) + ".py" 
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
-                url = sub.attributes[self.ATTACHMENTS_ATTR][-1][self.URL_ATTR]
+                url = sub.attributes[self.ATTACHMENTS_ATTR][0][self.URL_ATTR]
                 raw_filename = wget.download(url)
                 os.rename(
                     raw_filename, directory_name + "/" + new_filename)
@@ -100,8 +100,4 @@ class CanvasHelper:
             self.selected_course.id, self.selected_assignment.id, user.id))
         headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
         payload = {'submission': {'posted_grade': grade}}
-        response = requests.put(url, json=payload, headers=headers)
-        print(user.name, user.id)
-        test = open('test.html', 'w')
-        print(response.status_code)
-        test.write(response.content.decode('utf-8'))
+        return requests.put(url, json=payload, headers=headers)

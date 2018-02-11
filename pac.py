@@ -1,5 +1,6 @@
 from canvashelper import CanvasHelper
 from grader import PythonGrader
+from termcolor import colored
 
 grading_term = "Spring 2018"
 
@@ -18,14 +19,30 @@ assignment = ch.getAssignment()
 pg = PythonGrader(submission_directory, users, assignment)
 line_count_grading = int(input("\n0: Output Grading\n1: Line Count Grading\n"))
 if line_count_grading:
-	count = int(input("Max amount of lines: "))
-	pg.setMaxLineCount(count)
+    count = int(input("Max amount of lines: "))
+    pg.setMaxLineCount(count)
 else:
-	output = input("Enter expected output: ")
-	pg.setExpectedOutput(output)
+    output = input("Enter expected output: ")
+    pg.setExpectedOutput(output)
 args = input("List arguments for program: ")
 pg.setArguments(args)
 grades = pg.gradeSubmissions()
+failed_uploads = []
+failed_grades = []
 for user, grade in grades.items():
-	ch.postSubmissionGrade(user, grade)
-	break
+    print(user.name, grade, end=" ")
+    response = ch.postSubmissionGrade(user, grade)
+    if response.status_code == 200:
+        print(colored("SUCCESS", "green"))
+    else:
+        print(colored("FAIL", "red"))
+        failed_uploads.append(user)
+    if grade == pg.default_grade:
+        failed_grades.append(user)
+
+print("\nFailed Uploads:")
+for user in failed_uploads:
+    print(user.name, user.id)
+print("\nFailed Grades:")
+for user in failed_grades:
+    print(user.name, user.id)
