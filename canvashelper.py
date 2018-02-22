@@ -68,7 +68,6 @@ class CanvasHelper:
         return self.selected_assignment
 
     def getSubmissions(self):
-        print("Downloading submissions...")
         directory_name = (str(self.selected_course.id) + " " +
                             self.selected_assignment.name + " Submissions")
         if not os.path.exists(directory_name):
@@ -91,7 +90,6 @@ class CanvasHelper:
                 text = self.__bodyToText__(sub.body)
                 with open(directory_name + "/" + new_filename, "w") as new_file:
                     new_file.write(text)
-        print()
         return directory_name
 
     def postSubmissionGrade(self, user, grade):
