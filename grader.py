@@ -25,14 +25,13 @@ class PythonRubric:
                     grade -= scheme[j]
         return grade
 
-
-
 class PythonGrader:
 
-    def __init__(self, submissions_dir, users, assignment):
+    def __init__(self, submissions_dir, users, assignment, rubric):
         self.submissions_dir = submissions_dir
         self.users = users 
         self.assignment = assignment
+        self.rubric = rubric
         self.expected_output = "default"
         self.line_count_mode = None
         self.max_lines = 0
