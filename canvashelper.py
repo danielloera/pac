@@ -23,8 +23,6 @@ class CanvasHelper:
         self.canvas = Canvas(api_url, api_token)
         self.api_url = api_url
         self.api_token = api_token
-        # Needed to manually upload grades. 
-        # ucfopen API does not currently support this natively.
         self.courses = {idx:self.canvas.get_course(course) for idx, course in 
                         zip(range(len(course_ids)), course_ids)}
         self.assignments = {}
@@ -93,6 +91,8 @@ class CanvasHelper:
         return directory_name
 
     def postSubmissionGrade(self, user, grade):
+        # Manual request is used instead of canvasapi to verify that grade
+        # was uploaded successfully.
         url = (self.api_url + 
             "api/v1/courses/{}/assignments/{}/submissions/{}".format(
             self.selected_course.id, self.selected_assignment.id, user.id))
