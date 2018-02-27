@@ -109,5 +109,5 @@ def main():
     for user in failed_grades:
         print(user.name, user.id)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
