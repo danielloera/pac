@@ -13,7 +13,7 @@ class PythonRubric:
         self.max_score = max_score
 
     def grade(self, user_outputs):
-        grade = self.max_score
+        score = self.max_score
         for i in range(self.outputs):
             user_output = user_output[i]
             expected_output = self.outputs[i]
@@ -22,8 +22,9 @@ class PythonRubric:
                 user_line = user_output[j]
                 expected_line = expected_output[j]
                 if user_line != expected_line:
-                    grade -= scheme[j]
-        return grade
+                    score -= scheme[j]
+        return score
+
 
 class PythonGrader:
 

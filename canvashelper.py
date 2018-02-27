@@ -90,7 +90,7 @@ class CanvasHelper:
                     new_file.write(text)
         return directory_name
 
-    def postSubmissionGrade(self, user, grade):
+    def postSubmissionGrade(self, user, grade, tries=3):
         # Manual request is used instead of canvasapi to verify that grade
         # was uploaded successfully.
         url = (self.api_url + 
@@ -98,4 +98,9 @@ class CanvasHelper:
             self.selected_course.id, self.selected_assignment.id, user.id))
         headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
         payload = {'submission': {'posted_grade': grade}}
-        return requests.put(url, json=payload, headers=headers)
+        response = requests.put(url, json=payload, headers=headers)
+        for i in range(tries - 1):
+            if response.status_code == 200:
+                break
+            response = requests.put(url, json=payload, headers=headers)
+        return response
