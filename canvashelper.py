@@ -1,5 +1,6 @@
 import secret
 from canvasapi import Canvas
+from datetime import datetime
 import json
 import requests
 import os
@@ -12,8 +13,9 @@ default_course_ids = [10170000001214449, 10170000001214450]
 
 class CanvasHelper:
 
-    ATTACHMENTS_ATTR = 'attachments'
-    URL_ATTR = 'url'
+    ATTACHMENTS_ATTR = "attachments"
+    URL_ATTR = "url"
+    MODIFIED_AT_ATTR = "modified_at"
 
     def __init__(self,
                 api_url=default_api_url,
@@ -35,6 +37,16 @@ class CanvasHelper:
         pre_replace = span_replace.replace("<pre>", "")
         pre_replace = pre_replace.replace("</pre>", "")
         return pre_replace.replace("<br>", "\n")
+
+    def __getLatestSubmissionURL__(self, attachments):
+        if len(attachments) < 2:
+            return attachments[0][self.URL_ATTR]
+        sorted_attachments = sorted(
+                attachments,
+                key=(lambda attachment:
+                        datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
+                        "%Y-%m-%dT%H:%M:%SZ")))
+        return sorted_attachments[0][self.URL_ATTR]
 
     def showCourseSelection(self):
         print("\nAvailable Courses:")
@@ -80,7 +92,8 @@ class CanvasHelper:
             new_filename = str(sub.user_id) + ".py" 
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
-                url = sub.attributes[self.ATTACHMENTS_ATTR][0][self.URL_ATTR]
+                url = self.__getLatestSubmissionURL__(
+                        sub.attributes[self.ATTACHMENTS_ATTR])
                 raw_filename = wget.download(url)
                 os.rename(
                     raw_filename, directory_name + "/" + new_filename)
