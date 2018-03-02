@@ -4,7 +4,9 @@ import subprocess
 
 class PythonRubric:
 
-    def __init__(self, outputs, schemes, max_score):
+    def __init__(self, inputs, outputs, schemes, max_score):
+        # list of list of inputs to test on.
+        self.inputs = inputs
         # list of list of expected program lines.
         self.outputs = outputs
         # list of list of grade values of each line
@@ -28,27 +30,11 @@ class PythonRubric:
 
 class PythonGrader:
 
-    def __init__(self, submissions_dir, users, assignment, rubric):
+    def __init__(self, submissions_dir, users, rubric, default_grade="0"):
         self.submissions_dir = submissions_dir
         self.users = users 
-        self.assignment = assignment
         self.rubric = rubric
-        self.expected_output = "default"
-        self.line_count_mode = None
-        self.max_lines = 0
-        self.args = ""
-        self.default_grade = "0"
-
-    def setExpectedOutput(self, text):
-        self.line_count_mode = False
-        self.expected_output = text
-
-    def setMaxLineCount(self, max_lines):
-        self.line_count_mode = True
-        self.max_lines = max_lines
-
-    def setArguments(self, args):
-        self.args = str.encode(args)
+        self.default_grade = default_grade
 
     def __createProc__(self, python_ver, filename):
         return subprocess.Popen(
@@ -57,13 +43,8 @@ class PythonGrader:
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE)
 
-    def __evaluateGrade__(self, output):
-        grade_scheme = {True: str(self.assignment.points_possible),
-                        False: self.default_grade}
-        if self.line_count_mode:
-            return grade_scheme[len(output.split("\n")) <= self.max_lines]
-        else:
-            return grade_scheme[output == self.expected_output]
+    def __evaluateGrade__(self, python_ver):
+        pass
 
     def gradeSubmissions(self):
         grades = {}
