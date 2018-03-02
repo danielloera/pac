@@ -14,8 +14,9 @@ default_course_ids = [10170000001214449, 10170000001214450]
 class CanvasHelper:
 
     ATTACHMENTS_ATTR = "attachments"
-    URL_ATTR = "url"
+    FILENAME_ATTR = "filename"
     MODIFIED_AT_ATTR = "modified_at"
+    URL_ATTR = "url"
 
     def __init__(self,
                 api_url=default_api_url,
@@ -39,7 +40,7 @@ class CanvasHelper:
         return pre_replace.replace("<br>", "\n")
 
     def __getLatestSubmissionURL__(self, attachments):
-        if len(attachments) < 2:
+        if len(attachments) == 1:
             return attachments[0][self.URL_ATTR]
         sorted_attachments = sorted(
                 attachments,
@@ -92,8 +93,11 @@ class CanvasHelper:
             new_filename = str(sub.user_id) + ".py" 
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
-                url = self.__getLatestSubmissionURL__(
-                        sub.attributes[self.ATTACHMENTS_ATTR])
+                attachments = [att for att in sub.attributes[self.ATTACHMENTS_ATTR]
+                               if att[self.FILENAME_ATTR].endswith(".py")]
+                if not attachments:
+                    continue
+                url = self.__getLatestSubmissionURL__(attachments)
                 raw_filename = wget.download(url)
                 os.rename(
                     raw_filename, directory_name + "/" + new_filename)

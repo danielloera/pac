@@ -32,18 +32,6 @@ def get_output_scheme(file):
         i += 1
     return outputs, schemes
 
-def get_input(file):
-    collections = []
-    collection = []
-    lines = file.readlines()
-    for line in lines:
-        if line == "\n":
-            collections.append(list(collection))
-            collection = []
-            continue
-        collection.append(line.strip())
-    return collections
-
 def main():
     # Initial information collection
     ch = CanvasHelper()
@@ -70,7 +58,8 @@ def main():
     schemes = None
     print("Gathering output scheme...")
     if os.path.isfile(OUTPUT_SCHEME_FILE):
-        outputs, schemes = get_output_scheme(open(OUTPUT_SCHEME_FILE))
+        with open(OUTPUT_SCHEME_FILE) as output_scheme_file:
+            outputs, schemes = get_output_scheme(output_scheme_file)
     else:
         print(("Please create an output scheme file\n"
                "containing the following format as an example:\n"
@@ -87,10 +76,13 @@ def main():
         raise Exception(
                 "Expected Output Scheme file {} does not exist.".format(
                         OUTPUT_SCHEME_FILE))
-    intputs = None
+    inputs = None
     print("Gathering input...")
     if os.path.isfile(INPUT_FILE):
-        inputs = get_input(open(INPUT_FILE))
+        with open(INPUT_FILE) as input_file:
+            inputs = PythonRubric.linesToCollections(
+                    input_file.readlines())
+            inputs = ["\n".join(i).encode("utf-8") for i in inputs]
     else:
         print(("Please create an input file\n"
                "containing the following format as an example:\n"
@@ -108,17 +100,18 @@ def main():
     pr = PythonRubric(inputs, outputs, schemes, assignment.points_possible)
 
     # Grading
+    print("Grading...")
     pg = PythonGrader(submission_directory, users, pr)
-    line_count_grading = int(input("\n0: Output Grading\n1: Line Count Grading\n"))
-    if line_count_grading:
-        count = int(input("Max amount of lines: "))
-        pg.setMaxLineCount(count)
-    else:
-        output = input("Enter expected output: ")
-        pg.setExpectedOutput(output)
-    args = input("List arguments for program: ")
-    pg.setArguments(args)
+
     grades = pg.gradeSubmissions()
+
+    yn = input("\n{} grades collected. Upload grades? [y/n]".format(len(grades)))
+
+    if yn == "n":
+        print("Showing grades.\n")
+        for user, grade in grades.items():
+            print(user.name, user.id, grade)
+        return
 
     # Grade uploading
     failed_uploads = []
