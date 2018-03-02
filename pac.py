@@ -6,10 +6,33 @@ from termcolor import colored
 
 GRADING_TERM = "Spring 2018"
 
-EXPECTED_OUTPUT_FILE = "expected.txt"
-SCHEME_FILE = "scheme.txt"
+OUTPUT_SCHEME_FILE = "output_scheme.txt"
+INPUT_FILE = "input.txt"
 
-def file_to_collections(file):
+def get_output_scheme(file):
+    outputs = []
+    schemes = []
+    output = []
+    scheme = []
+    lines = file.readlines()
+    i = 0
+    while i < len(lines):
+        output_line = lines[i]
+        if output_line == "\n":
+            outputs.append(list(output))
+            schemes.append(list(scheme))
+            output = []
+            scheme = []
+            i += 1
+            continue
+        i += 1
+        scheme_line = int(lines[i].strip())
+        output.append(output_line.strip())
+        scheme.append(scheme_line)
+        i += 1
+    return outputs, schemes
+
+def get_input(file):
     collections = []
     collection = []
     lines = file.readlines()
@@ -19,7 +42,6 @@ def file_to_collections(file):
             collection = []
             continue
         collection.append(line.strip())
-    collections.append(collection)
     return collections
 
 def main():
@@ -46,36 +68,47 @@ def main():
     # Rubric collection
     outputs = None
     schemes = None
-    print("Gathering expected outputs...")
-    if os.path.isfile(EXPECTED_OUTPUT_FILE):
-        outputs = file_to_collections(open(EXPECTED_OUTPUT_FILE))
+    print("Gathering output scheme...")
+    if os.path.isfile(OUTPUT_SCHEME_FILE):
+        outputs, schemes = get_output_scheme(open(OUTPUT_SCHEME_FILE))
     else:
-        print(("Please create an output file\n"
+        print(("Please create an output scheme file\n"
                "containing the following format as an example:\n"
-               "Hello This is my output.\n"
-               "This is only the first output.\n"
+               "The next line is how many points this line is worth\n"
+               "5"
+               "Separate multiple outputs with a newline\n"
+               "10"
                "\n"
                "Now begins the second output.\n"
-               "Goodbye."))
+               "10"
+               "Always end file with with a newline"
+               "75"
+               "\n"))
         raise Exception(
-                "Expected Output file {} does not exist.".format(
-                        EXPECTED_OUTPUT_FILE))
-
-    print("Gathering schemes...")
-    if os.path.isfile(SCHEME_FILE):
-        schemes = file_to_collections(open(SCHEME_FILE))
-        raise Exception("ss")
+                "Expected Output Scheme file {} does not exist.".format(
+                        OUTPUT_SCHEME_FILE))
+    intputs = None
+    print("Gathering input...")
+    if os.path.isfile(INPUT_FILE):
+        inputs = get_input(open(INPUT_FILE))
     else:
-        print(("Please create a scheme file\n"
+        print(("Please create an input file\n"
                "containing the following format as an example:\n"
-               "1\n20\n\n15\n44"))
+               "The next line is how many points this line is worth\n"
+               "This is the first input"
+               "each line is a new argument"
+               "\n"
+               "This is the second input"
+               "Always end file with a newline"
+               "\n"))
         raise Exception(
-                "Expected scheme file {} does not exist.".format(
-                        SCHEME_FILE))
-    pr = PythonRubric(outputs, schemes, assignment.points_possible)
+                "Expected Input file {} does not exist.".format(
+                        INPUT_FILE))
+
+    pr = PythonRubric(inputs, outputs, schemes, assignment.points_possible)
 
     # Grading
-    pg = PythonGrader(submission_directory, users, assignment, pr)
+    pg = PythonGrader(submission_directory, users, pr)
     line_count_grading = int(input("\n0: Output Grading\n1: Line Count Grading\n"))
     if line_count_grading:
         count = int(input("Max amount of lines: "))
@@ -109,5 +142,5 @@ def main():
     for user in failed_grades:
         print(user.name, user.id)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
