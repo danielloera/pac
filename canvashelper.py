@@ -39,15 +39,17 @@ class CanvasHelper:
         pre_replace = pre_replace.replace("</pre>", "")
         return pre_replace.replace("<br>", "\n")
 
-    def __getLatestSubmissionURL__(self, attachments):
-        if len(attachments) == 1:
-            return attachments[0][self.URL_ATTR]
-        sorted_attachments = sorted(
+    def __getSubmissionDate__(self, attachment):
+        return datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
+                "%Y-%m-%dT%H:%M:%SZ")
+
+    def __getLatestSubmission__(self, attachments):
+        if len(attachments) != 1:
+            attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                        datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
-                        "%Y-%m-%dT%H:%M:%SZ")))
-        return sorted_attachments[0][self.URL_ATTR]
+                        self.__getSubmissionDate__(attachment)))
+        return attachments[0]
 
     def showCourseSelection(self):
         print("\nAvailable Courses:")
@@ -97,7 +99,10 @@ class CanvasHelper:
                                if att[self.FILENAME_ATTR].endswith(".py")]
                 if not attachments:
                     continue
-                url = self.__getLatestSubmissionURL__(attachments)
+                latest_submission = self.__getLatestSubmission__(attachments)
+                url = latest_submission[self.URL_ATTR]
+                # TODO(danielloera) Get date of submission and 
+                # find out if it is late.
                 raw_filename = wget.download(url)
                 os.rename(
                     raw_filename, directory_name + "/" + new_filename)
