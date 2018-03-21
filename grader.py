@@ -24,6 +24,7 @@ class PythonRubric:
                 collection = []
                 continue
             collection.append(line.strip())
+        collections.append(collection)
         return collections
 
     def grade(self, user_outputs):
@@ -32,11 +33,16 @@ class PythonRubric:
             user_output = user_outputs[i]
             expected_output = self.outputs[i]
             scheme = self.schemes[i]
-            for j in range(len(expected_output)):
+            user_len = len(user_output)
+            for j in range(user_len):
                 user_line = user_output[j]
                 expected_line = expected_output[j]
                 if user_line != expected_line:
                     score -= scheme[j]
+            expected_len = len(expected_output)
+            if user_len < expected_len:
+                for line_value in scheme[-(expected_len - user_len):]:
+                    score -= line_value
         return score
 
 
@@ -48,27 +54,24 @@ class PythonGrader:
         self.rubric = rubric
         self.default_grade = default_grade
 
-    def __evaluateGrade__(self, python_ver, submission_filename, if_error=None):
+    def __evaluateGrade__(self, python_ver, submission_filename):
         user_outputs = []
         for test_input in self.rubric.inputs:
             proc = subprocess.Popen(
-                [python_ver, '-u', submission_filename],
+                [python_ver, submission_filename],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE)
             output, err = proc.communicate(input=test_input)
-            if err.decode("utf-8") != "":
+            err_str = err.decode("utf-8")
+            if err_str != "":
                 proc.kill()
-                return if_error
-            print(output.decode("utf-8").strip().split("\n")+ ["\n"])
+                return err_str, False
             user_outputs.append(
                     PythonRubric.linesToCollections(
                             output.decode("utf-8").split("\n")))
             proc.kill()
-        for a in user_outputs:
-            print(a)
-            print()
-        return self.rubric.grade(user_outputs)
+        return self.rubric.grade(user_outputs) + addition, True
 
     def gradeSubmissions(self):
         grades = {}
@@ -80,10 +83,13 @@ class PythonGrader:
                 grades[user] = self.default_grade
                 print(user_str, "has no submission.")
                 continue
-            score = self.__evaluateGrade__("python3", submission_filename)
-            if score is None:
-                score = self.__evaluateGrade__("python2", submission_filename,
-                        if_error=self.default_grade)
-            grades[user] = score
-            print(user.name, user.id, score)
+            value, successful = self.__evaluateGrade__("python3", submission_filename)
+            python3_err = ""
+            if not successful:
+                python3_err = value
+                value, successful = self.__evaluateGrade__("python2", submission_filename)
+            if successful:
+                grades[user] = tuple([value])
+            else:
+                grades[user] = (self.default_grade, python3_err, value)
         return grades
