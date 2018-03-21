@@ -30,7 +30,12 @@ def get_output_scheme(file):
         output.append(output_line.strip())
         scheme.append(scheme_line)
         i += 1
+    outputs.append(output)
+    schemes.append(scheme)
     return outputs, schemes
+
+def lastname_lex(users):
+    return sorted(users, key=lambda user: user.name.split()[1].upper())
 
 def main():
     # Initial information collection
@@ -82,7 +87,8 @@ def main():
         with open(INPUT_FILE) as input_file:
             inputs = PythonRubric.linesToCollections(
                     input_file.readlines())
-            inputs = ["\n".join(i).encode("utf-8") for i in inputs]
+            inputs = [("\n".join(i) + "\n").encode("utf-8")
+                      for i in inputs]
     else:
         print(("Please create an input file\n"
                "containing the following format as an example:\n"
@@ -105,18 +111,21 @@ def main():
 
     grades = pg.gradeSubmissions()
 
-    yn = input("\n{} grades collected. Upload grades? [y/n]".format(len(grades)))
+    print("Showing grades.\n")
+    for user, result in grades.items():
+        print(user.name, user.id, result[0])
 
-    if yn == "n":
-        print("Showing grades.\n")
-        for user, grade in grades.items():
-            print(user.name, user.id, grade)
+    yn = input("\n{} grades collected. Upload grades? [y/n] ".format(len(grades)))
+
+    if yn != "y":
         return
 
     # Grade uploading
     failed_uploads = []
     failed_grades = []
-    for user, grade in grades.items():
+    print(colored("Grade Upload Report", "magenta"))
+    for user, result in grades.items():
+        grade = result[0]
         print(user.name, grade, end=" ")
         response = ch.postSubmissionGrade(user, grade)
         if response.status_code == 200:
@@ -129,11 +138,16 @@ def main():
 
     # Final report for manual grade checking
     print("\nFailed Uploads:")
-    for user in failed_uploads:
+    for user in lastname_lex(failed_uploads):
         print(user.name, user.id)
-    print("\nFailed Grades:")
-    for user in failed_grades:
-        print(user.name, user.id)
+    print("\nFailed Grades:\n")
+    for user in lastname_lex(failed_grades):
+        print(colored(user.name, "white"), colored(user.id, "magenta"))
+        result = grades[user]
+        if len(result) > 1:
+            print("Python3 Error\n", result[-2], "\n")
+            print("Python2 Error\n", result[-1], "\n")
+
 
 if __name__ == '__main__':
     main()
