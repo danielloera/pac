@@ -71,7 +71,7 @@ class PythonGrader:
                     PythonRubric.linesToCollections(
                             output.decode("utf-8").split("\n")))
             proc.kill()
-        return self.rubric.grade(user_outputs) + addition, True
+        return self.rubric.grade(user_outputs), True
 
     def gradeSubmissions(self):
         grades = {}
