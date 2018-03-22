@@ -76,17 +76,20 @@ class PythonGrader:
             self.contains_errors = True
 
 
-    def __init__(self, submissions_dir, users, rubric, default_grade="0"):
-        self.submissions_dir = submissions_dir
-        self.users = users 
+    def __init__(self, submissions, rubric, default_grade=0):
+        self.submissions = submissions
         self.rubric = rubric
         self.default_grade = default_grade
 
-    def __evaluateGrade(self, python_ver, submission_filename):
+    def __lateness(self, submission):
+        # TODO(danielloera) complete this function
+        return 0
+
+    def __evaluateGrade(self, python_ver, submission):
         user_outputs = []
         for test_input in self.rubric.inputs:
             proc = subprocess.Popen(
-                [python_ver, submission_filename],
+                [python_ver, submission.filename],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE)
@@ -99,28 +102,28 @@ class PythonGrader:
                     PythonRubric.linesToCollections(
                             output.decode("utf-8").split("\n")))
             proc.kill()
-        return self.rubric.grade(user_outputs), True
+        score = self.rubric.grade(user_outputs) - self.__lateness(submission)
+        return score, True
 
     def getResults(self):
         results = {}
-        for user in self.users:
+        for submission in self.submissions:
             result = self.Result()
-            submission_filename = (self.submissions_dir + "/" + 
-                                    str(user.id) + ".py")
-            user_str = user.name + "(" + str(user.id) + ")"
-            if not os.path.isfile(submission_filename):
-                result.setGrade(self.default_grade)
-                print(user_str, "has no submission.")
-            else:
-                value, successful = self.__evaluateGrade("python3", submission_filename)
+            user = submission.user
+            user_str = user.name + " (" + str(user.id) + ")"
+            if submission.exists:
+                value, successful = self.__evaluateGrade("python3", submission)
                 python3_err = ""
                 if not successful:
                     python3_err = value
-                    value, successful = self.__evaluateGrade("python2", submission_filename)
+                    value, successful = self.__evaluateGrade("python2", submission)
                 if successful:
                     result.setGrade(value)
                 else:
                     result.setGrade(self.default_grade)
                     result.setErrors(value, python3_err)
+            else:
+                result.setGrade(self.default_grade)
+                print(user_str, "has no submission.")
             results[user] = result
         return results

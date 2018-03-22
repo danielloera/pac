@@ -2,8 +2,9 @@ import secret
 from canvasapi import Canvas
 from datetime import datetime
 import json
-import requests
 import os
+import requests
+import sys
 import wget
 
 default_api_url = "https://utexas.instructure.com/"
@@ -17,6 +18,21 @@ class CanvasHelper:
     FILENAME_ATTR = "filename"
     MODIFIED_AT_ATTR = "modified_at"
     URL_ATTR = "url"
+
+
+    class Submission:
+
+        def __init__(self, user, filename=None, date=None):
+            self.user = user
+            self.filename = filename
+            self.date = date
+            self.exists = False
+
+        def setInfo(self, filename, date):
+            self.filename = filename
+            self.date = date
+            self.exists = True
+
 
     def __init__(self,
                 api_url=default_api_url,
@@ -74,32 +90,39 @@ class CanvasHelper:
         return self.selected_assignment
 
     def getSubmissions(self):
+        submissions = []
         directory_name = (str(self.selected_course.id) + " " +
                             self.selected_assignment.name + " Submissions")
-        if not os.path.exists(directory_name):
-            os.makedirs(directory_name)
-        else:
+        submissions_downloaded = False
+        if os.path.exists(directory_name):
             print(
                 "Submissions already downloaded. Delete '{}' to redownload."
                 .format(directory_name))
-            return directory_name
-        for sub in self.selected_course.list_submissions(
-                self.selected_assignment):
-            new_filename = str(sub.user_id) + ".py" 
+            submissions_downloaded = True
+        else:
+            os.makedirs(directory_name)
+        canvas_submissions = self.selected_course.list_submissions(
+                self.selected_assignment, include=["user"])
+        print("Linking Users...")
+        for sub in canvas_submissions:
+            user = self.selected_course.get_user(sub.user_id)
+            submission = self.Submission(user)
+            new_filename =  directory_name + "/" + str(user.id) + ".py" 
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
-                attachments = [att for att in sub.attributes[self.ATTACHMENTS_ATTR]
+                attachments = [att for att in
+                               sub.attributes[self.ATTACHMENTS_ATTR]
                                if att[self.FILENAME_ATTR].endswith(".py")]
-                if not attachments:
-                    continue
-                latest_submission = self.__getLatestSubmission(attachments)
-                url = latest_submission[self.URL_ATTR]
-                # TODO(danielloera) Get date of submission and 
-                # find out if it is late.
-                raw_filename = wget.download(url)
-                os.rename(
-                    raw_filename, directory_name + "/" + new_filename)
-        return directory_name
+                if attachments:
+                    latest_submission = self.__getLatestSubmission(attachments)
+                    sub_date = self.__getSubmissionDate(latest_submission)
+                    url = latest_submission[self.URL_ATTR]
+                    if not submissions_downloaded:
+                        raw_filename = wget.download(url)
+                        os.rename(raw_filename, new_filename)
+                    submission.setInfo(new_filename, sub_date)
+            submissions.append(submission)
+        return submissions
 
     def postSubmissionGrade(self, user, grade, tries=3):
         # Manual request is used instead of canvasapi to verify that grade
