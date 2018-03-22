@@ -32,23 +32,16 @@ class CanvasHelper:
         self.selected_course = None
         self.selected_assignment = None
 
-    def __bodyToText__(self, body):
-        span_replace = body.replace("<span>", "  ")
-        span_replace = span_replace.replace("</span>", "  ")
-        pre_replace = span_replace.replace("<pre>", "")
-        pre_replace = pre_replace.replace("</pre>", "")
-        return pre_replace.replace("<br>", "\n")
-
-    def __getSubmissionDate__(self, attachment):
+    def __getSubmissionDate(self, attachment):
         return datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
                 "%Y-%m-%dT%H:%M:%SZ")
 
-    def __getLatestSubmission__(self, attachments):
+    def __getLatestSubmission(self, attachments):
         if len(attachments) != 1:
             attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                        self.__getSubmissionDate__(attachment)))
+                        self.__getSubmissionDate(attachment)))
         return attachments[0]
 
     def showCourseSelection(self):
@@ -99,17 +92,13 @@ class CanvasHelper:
                                if att[self.FILENAME_ATTR].endswith(".py")]
                 if not attachments:
                     continue
-                latest_submission = self.__getLatestSubmission__(attachments)
+                latest_submission = self.__getLatestSubmission(attachments)
                 url = latest_submission[self.URL_ATTR]
                 # TODO(danielloera) Get date of submission and 
                 # find out if it is late.
                 raw_filename = wget.download(url)
                 os.rename(
                     raw_filename, directory_name + "/" + new_filename)
-            elif sub.body is not None:
-                text = self.__bodyToText__(sub.body)
-                with open(directory_name + "/" + new_filename, "w") as new_file:
-                    new_file.write(text)
         return directory_name
 
     def postSubmissionGrade(self, user, grade, tries=3):
@@ -123,6 +112,6 @@ class CanvasHelper:
         response = requests.put(url, json=payload, headers=headers)
         for i in range(tries - 1):
             if response.status_code == 200:
-                break
+                return True
             response = requests.put(url, json=payload, headers=headers)
-        return response
+        return False
