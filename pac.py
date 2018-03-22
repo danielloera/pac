@@ -52,11 +52,9 @@ def main():
     ch.selectAssignment(assn_selection)
 
     print("Downloading submissions...")
-    submission_directory = ch.getSubmissions()
-    print()
+    submissions = ch.getSubmissions()
 
-    users = ch.getUsers()
-    assignment = ch.getAssignment()
+    assignment_points = ch.getAssignment().points_possible
 
     # Rubric collection
     outputs = None
@@ -103,11 +101,11 @@ def main():
                 "Expected Input file {} does not exist.".format(
                         INPUT_FILE))
 
-    pr = PythonRubric(inputs, outputs, schemes, assignment.points_possible)
+    pr = PythonRubric(inputs, outputs, schemes, assignment_points)
 
     # Grading
     print("Grading...")
-    pg = PythonGrader(submission_directory, users, pr)
+    pg = PythonGrader(submissions, pr)
 
     results = pg.getResults()
 
