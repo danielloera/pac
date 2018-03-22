@@ -109,13 +109,14 @@ def main():
     print("Grading...")
     pg = PythonGrader(submission_directory, users, pr)
 
-    grades = pg.gradeSubmissions()
+    results = pg.getResults()
 
     print("Showing grades.\n")
-    for user, result in grades.items():
-        print(user.name, user.id, result[0])
+    for user, result in results.items():
+        print(user.name, user.id, result.grade)
 
-    yn = input("\n{} grades collected. Upload grades? [y/n] ".format(len(grades)))
+    yn = input("\n{} results collected. Upload grades? [y/n] ".format(
+            len(results)))
 
     if yn != "y":
         return
@@ -124,11 +125,11 @@ def main():
     failed_uploads = []
     failed_grades = []
     print(colored("Grade Upload Report", "magenta"))
-    for user, result in grades.items():
-        grade = result[0]
+    for user, result in results.items():
+        grade = result.grade
         print(user.name, grade, end=" ")
-        response = ch.postSubmissionGrade(user, grade)
-        if response.status_code == 200:
+        submission_successful = ch.postSubmissionGrade(user, grade)
+        if submission_successful:
             print(colored("SUCCESS", "green"))
         else:
             print(colored("FAIL", "red"))
@@ -137,17 +138,14 @@ def main():
             failed_grades.append(user)
 
     # Final report for manual grade checking
-    print("\nFailed Uploads:")
+    print("\nFailed Uploads ({}):".format(len(failed_uploads)))
     for user in lastname_lex(failed_uploads):
         print(user.name, user.id)
-    print("\nFailed Grades:\n")
+    print("\nFailed Grades ({}):\n".format(len(failed_grades)))
     for user in lastname_lex(failed_grades):
         print(colored(user.name, "white"), colored(user.id, "magenta"))
-        result = grades[user]
-        if len(result) > 1:
-            print("Python3 Error\n", result[-2], "\n")
-            print("Python2 Error\n", result[-1], "\n")
-
+        print(results[user], "\n")
+        input("press [ENTER] for next grade result")
 
 if __name__ == '__main__':
     main()
