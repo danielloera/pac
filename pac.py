@@ -1,5 +1,4 @@
 from canvashelper import CanvasHelper
-from datetime import datetime
 from grader import PythonGrader
 from grader import PythonRubric
 import os
