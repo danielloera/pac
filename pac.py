@@ -9,6 +9,7 @@ GRADING_TERM = "Spring 2018"
 OUTPUT_SCHEME_FILE = "output_scheme.txt"
 INPUT_FILE = "input.txt"
 
+
 def get_output_scheme(file):
     outputs = []
     schemes = []
@@ -34,8 +35,10 @@ def get_output_scheme(file):
     schemes.append(scheme)
     return outputs, schemes
 
+
 def lastname_lex(users):
     return sorted(users, key=lambda user: user.name.split()[1].upper())
+
 
 def main():
     # Initial information collection
@@ -48,7 +51,8 @@ def main():
     ch.selectCourse(course_selection)
 
     ch.showAssignmentSelection()
-    assn_selection = int(input("\nWhich assignment would you like to select? "))
+    assn_selection = int(
+        input("\nWhich assignment would you like to select? "))
     ch.selectAssignment(assn_selection)
 
     print("Downloading submissions...")
@@ -77,14 +81,14 @@ def main():
                "75"
                "\n"))
         raise Exception(
-                "Expected Output Scheme file {} does not exist.".format(
-                        OUTPUT_SCHEME_FILE))
+            "Expected Output Scheme file {} does not exist.".format(
+                OUTPUT_SCHEME_FILE))
     inputs = None
     print("Gathering input...")
     if os.path.isfile(INPUT_FILE):
         with open(INPUT_FILE) as input_file:
             inputs = PythonRubric.linesToCollections(
-                    input_file.readlines())
+                input_file.readlines())
             inputs = [("\n".join(i) + "\n").encode("utf-8")
                       for i in inputs]
     else:
@@ -98,8 +102,8 @@ def main():
                "Always end file with a newline"
                "\n"))
         raise Exception(
-                "Expected Input file {} does not exist.".format(
-                        INPUT_FILE))
+            "Expected Input file {} does not exist.".format(
+                INPUT_FILE))
 
     pr = PythonRubric(inputs, outputs, schemes, assignment_points)
 
@@ -114,7 +118,7 @@ def main():
         print(user.name, user.id, result.grade)
 
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
-            len(results)))
+        len(results)))
 
     if yn != "y":
         return
@@ -145,5 +149,6 @@ def main():
         print(results[user], "\n")
         input("press [ENTER] for next grade result")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
