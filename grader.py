@@ -1,5 +1,7 @@
+from math import ceil
 import os
 import subprocess
+from termcolor import colored
 
 
 class PythonRubric:
@@ -48,6 +50,9 @@ class PythonRubric:
 
 class PythonGrader:
 
+    LATE = colored("LATE", "yellow")
+    MISSING = colored("MISSING", "red")
+
     class Result:
 
         def __init__(self):
@@ -74,14 +79,27 @@ class PythonGrader:
             self.python3_err = p3err
             self.contains_errors = True
 
-    def __init__(self, submissions, rubric, default_grade=0):
+    def __init__(self,
+                 submissions,
+                 rubric,
+                 default_grade=0,
+                 late_percent=0.05):
         self.submissions = submissions
         self.rubric = rubric
         self.default_grade = default_grade
+        self.late_percent = late_percent
 
     def __lateness(self, submission):
-        # TODO(danielloera) complete this function
+        if submission.seconds_late > 0:
+            days = ceil(submission.seconds_late / 60 / 60 / 24)
+            print(submission.user.name, self.LATE, "({} days)".format(days))
+            max_score = self.rubric.max_score
+            max_days = 1 / self.late_percent
+            if days >= max_days:
+                return max_score
+            return max_score * self.late_percent * days
         return 0
+
 
     def __evaluateGrade(self, python_ver, submission):
         user_outputs = []
@@ -101,6 +119,7 @@ class PythonGrader:
                     output.decode("utf-8").split("\n")))
             proc.kill()
         score = self.rubric.grade(user_outputs) - self.__lateness(submission)
+        score = score if score >= 0 else 0
         return score, False
 
     def getResults(self):
@@ -108,7 +127,6 @@ class PythonGrader:
         for submission in self.submissions:
             result = self.Result()
             user = submission.user
-            user_str = user.name + " (" + str(user.id) + ")"
             if submission.exists:
                 value, errors = self.__evaluateGrade("python3", submission)
                 python3_err = ""
@@ -121,7 +139,7 @@ class PythonGrader:
                 else:
                     result.setGrade(value)
             else:
+                print(user.name, self.MISSING)
                 result.setGrade(self.default_grade)
-                print(user_str, "has no submission.")
             results[user] = result
         return results

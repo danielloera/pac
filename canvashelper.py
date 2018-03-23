@@ -16,20 +16,19 @@ class CanvasHelper:
 
     ATTACHMENTS_ATTR = "attachments"
     FILENAME_ATTR = "filename"
-    MODIFIED_AT_ATTR = "modified_at"
+    CREATED_AT_ATTR = "created_at"
     URL_ATTR = "url"
 
     class Submission:
 
-        def __init__(self, user, filename=None, date=None):
+        def __init__(self, user, seconds_late, filename=None):
             self.user = user
+            self.seconds_late = seconds_late
             self.filename = filename
-            self.date = date
             self.exists = False
 
-        def setInfo(self, filename, date):
+        def setFilename(self, filename):
             self.filename = filename
-            self.date = date
             self.exists = True
 
     def __init__(self,
@@ -46,16 +45,15 @@ class CanvasHelper:
         self.selected_course = None
         self.selected_assignment = None
 
-    def __getSubmissionDate(self, attachment):
-        return datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
-                                 "%Y-%m-%dT%H:%M:%SZ")
+    def __getSubmissionDate(self, date_str):
+        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
 
     def __getLatestSubmission(self, attachments):
         if len(attachments) != 1:
             attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                     self.__getSubmissionDate(attachment)))
+                     self.__getSubmissionDate(attachment[CREATED_AT_ATTR])))
         return attachments[0]
 
     def showCourseSelection(self):
@@ -93,6 +91,7 @@ class CanvasHelper:
             str(self.selected_course.id) + " " +
             self.selected_assignment.name + " Submissions")
         submissions_downloaded = False
+        users = {user.id:user for user in self.getUsers()}
         if os.path.exists(directory_name):
             print("Submissions already downloaded. Delete '{}' to redownload."
                   .format(directory_name))
@@ -103,8 +102,8 @@ class CanvasHelper:
             self.selected_assignment)
         print("Linking Users...")
         for sub in canvas_submissions:
-            user = self.selected_course.get_user(sub.user_id)
-            submission = self.Submission(user)
+            user = users[sub.user_id]
+            submission = self.Submission(user, int(sub.seconds_late))
             new_filename = directory_name + "/" + str(user.id) + ".py"
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
@@ -113,12 +112,11 @@ class CanvasHelper:
                                if att[self.FILENAME_ATTR].endswith(".py")]
                 if attachments:
                     latest_submission = self.__getLatestSubmission(attachments)
-                    sub_date = self.__getSubmissionDate(latest_submission)
                     url = latest_submission[self.URL_ATTR]
                     if not submissions_downloaded:
                         raw_filename = wget.download(url)
                         os.rename(raw_filename, new_filename)
-                    submission.setInfo(new_filename, sub_date)
+                    submission.setFilename(new_filename)
             submissions.append(submission)
         return submissions
 

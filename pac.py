@@ -1,4 +1,5 @@
 from canvashelper import CanvasHelper
+from datetime import datetime
 from grader import PythonGrader
 from grader import PythonRubric
 import os
@@ -8,6 +9,12 @@ GRADING_TERM = "Spring 2018"
 
 OUTPUT_SCHEME_FILE = "output_scheme.txt"
 INPUT_FILE = "input.txt"
+
+# Termcolor constants
+SUCCESS = colored("SUCCESS", "green")
+FAIL = colored("FAIL", "red")
+GRADE_UPLOAD_REPORT = colored("Grade Upload Report", "magenta")
+GRADES = colored("Grades", "magenta")
 
 
 def get_output_scheme(file):
@@ -110,15 +117,14 @@ def main():
     # Grading
     print("Grading...")
     pg = PythonGrader(submissions, pr)
-
     results = pg.getResults()
 
-    print("Showing grades.\n")
+    print(GRADES)
     for user, result in results.items():
         print(user.name, user.id, result.grade)
 
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
-        len(results)))
+        len(results))).lower()
 
     if yn != "y":
         return
@@ -126,15 +132,15 @@ def main():
     # Grade uploading
     failed_uploads = []
     failed_grades = []
-    print(colored("Grade Upload Report", "magenta"))
+    print(GRADE_UPLOAD_REPORT)
     for user, result in results.items():
         grade = result.grade
         print(user.name, grade, end=" ")
         submission_successful = ch.postSubmissionGrade(user, grade)
         if submission_successful:
-            print(colored("SUCCESS", "green"))
+            print(SUCCESS)
         else:
-            print(colored("FAIL", "red"))
+            print(FAIL)
             failed_uploads.append(user)
         if grade == pg.default_grade:
             failed_grades.append(user)
@@ -143,10 +149,16 @@ def main():
     print("\nFailed Uploads ({}):".format(len(failed_uploads)))
     for user in lastname_lex(failed_uploads):
         print(user.name, user.id)
-    print("\nFailed Grades ({}):\n".format(len(failed_grades)))
+    total_failed = len(failed_grades)
+    index = 1
+    print("\nFailed Grades ({}):\n".format(total_failed))
     for user in lastname_lex(failed_grades):
-        print(colored(user.name, "white"), colored(user.id, "magenta"))
-        print(results[user], "\n")
+        print(
+            colored("({}/{})".format(index,total_failed), "red"),
+            colored(user.name, "white"),
+            colored(user.id, "magenta"))
+        print(colored(results[user], "white"), "\n")
+        index += 1
         input("press [ENTER] for next grade result")
 
 
