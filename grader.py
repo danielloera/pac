@@ -48,7 +48,6 @@ class PythonRubric:
 
 class PythonGrader:
 
-
     class Result:
 
         def __init__(self):
@@ -56,10 +55,10 @@ class PythonGrader:
             self.python2_err = None
             self.python3_err = None
             self.contains_errors = False
-        
+
         def __errorStr(self):
             return "Python3 Error:\n{p3}\nPython2 Error:\n{p2}\n".format(
-                    p3=self.python3_err, p2=self.python2_err)
+                p3=self.python3_err, p2=self.python2_err)
 
         def __str__(self):
             default_str = "Grade: {}".format(self.grade)
@@ -74,7 +73,6 @@ class PythonGrader:
             self.python2_err = p2err
             self.python3_err = p3err
             self.contains_errors = True
-
 
     def __init__(self, submissions, rubric, default_grade=0):
         self.submissions = submissions
@@ -97,13 +95,13 @@ class PythonGrader:
             err_str = err.decode("utf-8")
             if err_str != "":
                 proc.kill()
-                return err_str, False
+                return err_str, True
             user_outputs.append(
-                    PythonRubric.linesToCollections(
-                            output.decode("utf-8").split("\n")))
+                PythonRubric.linesToCollections(
+                    output.decode("utf-8").split("\n")))
             proc.kill()
         score = self.rubric.grade(user_outputs) - self.__lateness(submission)
-        return score, True
+        return score, False
 
     def getResults(self):
         results = {}
@@ -112,16 +110,16 @@ class PythonGrader:
             user = submission.user
             user_str = user.name + " (" + str(user.id) + ")"
             if submission.exists:
-                value, successful = self.__evaluateGrade("python3", submission)
+                value, errors = self.__evaluateGrade("python3", submission)
                 python3_err = ""
-                if not successful:
+                if errors:
                     python3_err = value
-                    value, successful = self.__evaluateGrade("python2", submission)
-                if successful:
-                    result.setGrade(value)
-                else:
+                    value, errors = self.__evaluateGrade("python2", submission)
+                if errors:
                     result.setGrade(self.default_grade)
                     result.setErrors(value, python3_err)
+                else:
+                    result.setGrade(value)
             else:
                 result.setGrade(self.default_grade)
                 print(user_str, "has no submission.")

@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import os
 import requests
-import sys
 import wget
 
 default_api_url = "https://utexas.instructure.com/"
@@ -12,13 +11,13 @@ default_api_url = "https://utexas.instructure.com/"
 # Courses helper will inspect. Must be updated every semester.
 default_course_ids = [10170000001214449, 10170000001214450]
 
+
 class CanvasHelper:
 
     ATTACHMENTS_ATTR = "attachments"
     FILENAME_ATTR = "filename"
     MODIFIED_AT_ATTR = "modified_at"
     URL_ATTR = "url"
-
 
     class Submission:
 
@@ -33,16 +32,15 @@ class CanvasHelper:
             self.date = date
             self.exists = True
 
-
     def __init__(self,
-                api_url=default_api_url,
-                api_token=secret.API_TOKEN,
-                course_ids=default_course_ids):
+                 api_url=default_api_url,
+                 api_token=secret.API_TOKEN,
+                 course_ids=default_course_ids):
         self.course_ids = course_ids
         self.canvas = Canvas(api_url, api_token)
         self.api_url = api_url
         self.api_token = api_token
-        self.courses = {idx:self.canvas.get_course(course) for idx, course in 
+        self.courses = {idx: self.canvas.get_course(course) for idx, course in
                         zip(range(len(course_ids)), course_ids)}
         self.assignments = {}
         self.selected_course = None
@@ -50,14 +48,14 @@ class CanvasHelper:
 
     def __getSubmissionDate(self, attachment):
         return datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
-                "%Y-%m-%dT%H:%M:%SZ")
+                                 "%Y-%m-%dT%H:%M:%SZ")
 
     def __getLatestSubmission(self, attachments):
         if len(attachments) != 1:
             attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                        self.__getSubmissionDate(attachment)))
+                     self.__getSubmissionDate(attachment)))
         return attachments[0]
 
     def showCourseSelection(self):
@@ -91,23 +89,23 @@ class CanvasHelper:
 
     def getSubmissions(self):
         submissions = []
-        directory_name = (str(self.selected_course.id) + " " +
-                            self.selected_assignment.name + " Submissions")
+        directory_name = (
+            str(self.selected_course.id) + " " +
+            self.selected_assignment.name + " Submissions")
         submissions_downloaded = False
         if os.path.exists(directory_name):
-            print(
-                "Submissions already downloaded. Delete '{}' to redownload."
-                .format(directory_name))
+            print("Submissions already downloaded. Delete '{}' to redownload."
+                  .format(directory_name))
             submissions_downloaded = True
         else:
             os.makedirs(directory_name)
         canvas_submissions = self.selected_course.list_submissions(
-                self.selected_assignment, include=["user"])
+            self.selected_assignment)
         print("Linking Users...")
         for sub in canvas_submissions:
             user = self.selected_course.get_user(sub.user_id)
             submission = self.Submission(user)
-            new_filename =  directory_name + "/" + str(user.id) + ".py" 
+            new_filename = directory_name + "/" + str(user.id) + ".py"
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
                 attachments = [att for att in
@@ -127,9 +125,10 @@ class CanvasHelper:
     def postSubmissionGrade(self, user, grade, tries=3):
         # Manual request is used instead of canvasapi to verify that grade
         # was uploaded successfully.
-        url = (self.api_url + 
+        url = (
+            self.api_url +
             "api/v1/courses/{}/assignments/{}/submissions/{}".format(
-            self.selected_course.id, self.selected_assignment.id, user.id))
+                self.selected_course.id, self.selected_assignment.id, user.id))
         headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
         payload = {'submission': {'posted_grade': grade}}
         response = requests.put(url, json=payload, headers=headers)
