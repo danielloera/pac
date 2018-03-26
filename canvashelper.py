@@ -88,8 +88,8 @@ class CanvasHelper:
     def getSubmissions(self):
         submissions = []
         directory_name = (
-            str(self.selected_course.id) + " " +
-            self.selected_assignment.name + " Submissions")
+            str(self.selected_course.id) + "_" +
+            str(self.selected_assignment.id) + "_Submissions")
         submissions_downloaded = False
         users = {user.id: user for user in self.getUsers()}
         if os.path.exists(directory_name):

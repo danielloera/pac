@@ -11,8 +11,8 @@ def alarm_handler(signum, frame):
 
 class Result:
 
-    def __init__(self, timed_out=False):
-        self.grade = None
+    def __init__(self, grade=None, timed_out=False):
+        self.grade = grade
         self.python2_err = None
         self.python3_err = None
         self.timed_out = timed_out
@@ -34,23 +34,32 @@ class Result:
 
     def __reasonsStr(self):
         if self.reasons:
-            return "\nIncorrect Results:\n{}".format(
+            return "\n\nIncorrect Results:\n{}".format(
                 "\n".join(self.reasons))
         else:
             return ""
 
     def __str__(self):
-        default_str = "Grade: {}".format(self.grade)
+        default_str = "AutoGrade: {}".format(self.grade)
         problems = (self.__errorStr()
                     + self.__timedOutStr()
                     + self.__reasonsStr())
-        return default_str + problems
+        extra_str = ""
+        if problems != "":
+            extra_str = "\n\n This grade may not be final."
+        return default_str + problems + extra_str
 
     def setGrade(self, grade):
         self.grade = grade
 
     def setTimedOut(self, timed_out):
         self.timed_out = timed_out
+
+    def addReason(self, reason):
+        self.reasons.append(reason)
+
+    def addReasons(self, reasons):
+        self.reasons.extend(reasons)
 
     def setError(self, err_type, err):
         if err_type == "python2":
@@ -108,13 +117,13 @@ class PythonRubric:
                 expected_line = expected_output[j].strip()
                 if user_line != expected_line:
                     score -= scheme[j]
-                    result.reasons.append(
+                    result.addReason(
                         "User output: {user}\nExpected: {expected}".format(
                             user=user_line, expected=expected_line))
             if user_len < expected_len:
                 for i in range(expected_len - user_len, expected_len):
                     score -= scheme[i]
-                    result.reasons.append(
+                    result.addReason(
                         "User output does not contain: {}".format(
                             expected_output[i]))
         result.setGrade(score)
@@ -187,30 +196,25 @@ class PythonGrader:
         for submission in self.submissions:
             user = submission.user
             print(user.name, user.id, end=" ")
-            final_result = Result()
+            final_result = Result(grade=self.default_grade)
             if submission.exists:
                 result = self.__evaluateGrade("python3", submission)
                 if result.timed_out:
-                    final_result.timed_out = True
-                    final_result.setGrade(self.default_grade)
+                    final_result.setTimedOut(True)
                 elif result.contains_errors:
                     python3_err = result.python3_err
                     result = self.__evaluateGrade("python2", submission)
                     if result.timed_out:
-                        final_result.timed_out = True
-                        final_result.setGrade(self.default_grade)
+                        final_result.setTimedOut(True)
                     elif result.contains_errors:
-                        final_result.setGrade(self.default_grade)
                         final_result.setErrors(result.python2_err, python3_err)
                     else:
                         final_result.setGrade(result.grade)
-                        final_result.reasons = result.reasons
-                else:
+                        final_result.addReasons(result.reasons)
                     final_result.setGrade(result.grade)
-                    final_result.reasons = result.reasons
+                    final_result.addReasons(result.reasons)
             else:
                 print(user.name, self.MISSING, end=" ")
-                final_result.setGrade(self.default_grade)
             results[user] = final_result
             print(final_result.grade)
         return results
