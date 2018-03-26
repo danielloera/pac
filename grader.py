@@ -211,6 +211,7 @@ class PythonGrader:
                     else:
                         final_result.setGrade(result.grade)
                         final_result.addReasons(result.reasons)
+                else:
                     final_result.setGrade(result.grade)
                     final_result.addReasons(result.reasons)
             else:
