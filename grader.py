@@ -1,7 +1,68 @@
 from math import ceil
 import os
+import signal
 import subprocess
 from termcolor import colored
+
+
+def alarm_handler(signum, frame):
+    raise Exception("Program took too long to finish...")
+
+
+class Result:
+
+    def __init__(self, timed_out=False):
+        self.grade = None
+        self.python2_err = None
+        self.python3_err = None
+        self.timed_out = timed_out
+        self.contains_errors = False
+        self.reasons = []
+
+    def __errorStr(self):
+        if self.contains_errors:
+            return "\n\nPython3 Error:\n{p3}\nPython2 Error:\n{p2}".format(
+                p3=self.python3_err, p2=self.python2_err)
+        else:
+            return ""
+
+    def __timedOutStr(self):
+        if self.timed_out:
+            return "\n\nProgram timed out."
+        else:
+            return ""
+
+    def __reasonsStr(self):
+        if self.reasons:
+            return "\nIncorrect Results:\n{}".format(
+                "\n".join(self.reasons))
+        else:
+            return ""
+
+    def __str__(self):
+        default_str = "Grade: {}".format(self.grade)
+        problems = (self.__errorStr()
+                    + self.__timedOutStr()
+                    + self.__reasonsStr())
+        return default_str + problems
+
+    def setGrade(self, grade):
+        self.grade = grade
+
+    def setTimedOut(self, timed_out):
+        self.timed_out = timed_out
+
+    def setError(self, err_type, err):
+        if err_type == "python2":
+            self.python2_err = err
+        else:
+            self.python3_err = err
+        self.contains_errors = True
+
+    def setErrors(self, p2err, p3err):
+        self.python2_err = p2err
+        self.python3_err = p3err
+        self.contains_errors = True
 
 
 class PythonRubric:
@@ -22,62 +83,49 @@ class PythonRubric:
         collection = []
         for line in lines:
             if line == "\n":
+                if collection[-1] == "":
+                    collection = collection[:-1]
                 collections.append(list(collection))
                 collection = []
                 continue
             collection.append(line.strip())
+        if collection[-1] == "":
+            collection = collection[:-1]
         collections.append(collection)
         return collections
 
     def grade(self, user_outputs):
+        result = Result()
         score = self.max_score
         for i in range(len(self.outputs)):
             user_output = user_outputs[i]
             expected_output = self.outputs[i]
             scheme = self.schemes[i]
             user_len = len(user_output)
-            for j in range(user_len):
-                user_line = user_output[j]
-                expected_line = expected_output[j]
+            expected_len = len(expected_output)
+            for j in range(min(user_len, expected_len)):
+                user_line = user_output[j].strip()
+                expected_line = expected_output[j].strip()
                 if user_line != expected_line:
                     score -= scheme[j]
-            expected_len = len(expected_output)
+                    result.reasons.append(
+                        "User output: {user}\nExpected: {expected}".format(
+                            user=user_line, expected=expected_line))
             if user_len < expected_len:
-                for line_value in scheme[-(expected_len - user_len):]:
-                    score -= line_value
-        return score
+                for i in range(expected_len - user_len, expected_len):
+                    score -= scheme[i]
+                    result.reasons.append(
+                        "User output does not contain: {}".format(
+                            expected_output[i]))
+        result.setGrade(score)
+        return result
 
 
 class PythonGrader:
 
     LATE = colored("LATE", "yellow")
     MISSING = colored("MISSING", "red")
-
-    class Result:
-
-        def __init__(self):
-            self.grade = None
-            self.python2_err = None
-            self.python3_err = None
-            self.contains_errors = False
-
-        def __errorStr(self):
-            return "Python3 Error:\n{p3}\nPython2 Error:\n{p2}\n".format(
-                p3=self.python3_err, p2=self.python2_err)
-
-        def __str__(self):
-            default_str = "Grade: {}".format(self.grade)
-            if self.contains_errors:
-                return default_str + "\n\n" + self.__errorStr()
-            return default_str
-
-        def setGrade(self, grade):
-            self.grade = grade
-
-        def setErrors(self, p2err, p3err):
-            self.python2_err = p2err
-            self.python3_err = p3err
-            self.contains_errors = True
+    GRADES = colored("Grades:", "magenta")
 
     def __init__(self,
                  submissions,
@@ -88,18 +136,19 @@ class PythonGrader:
         self.rubric = rubric
         self.default_grade = default_grade
         self.late_percent = late_percent
+        signal.signal(signal.SIGALRM, alarm_handler)
 
     def __lateness(self, submission):
         if submission.seconds_late > 0:
             days = ceil(submission.seconds_late / 60 / 60 / 24)
-            print(submission.user.name, self.LATE, "({} days)".format(days))
+            print(submission.user.name, self.LATE,
+                  "({} days)".format(days), end=" ")
             max_score = self.rubric.max_score
             max_days = 1 / self.late_percent
             if days >= max_days:
                 return max_score
             return max_score * self.late_percent * days
         return 0
-
 
     def __evaluateGrade(self, python_ver, submission):
         user_outputs = []
@@ -109,37 +158,59 @@ class PythonGrader:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE)
-            output, err = proc.communicate(input=test_input)
+            output, err = None, None
+            signal.alarm(15)
+            try:
+                output, err = proc.communicate(input=test_input)
+                signal.alarm(0)
+            except Exception as e:
+                proc.kill()
+                return Result(timed_out=True)
             err_str = err.decode("utf-8")
             if err_str != "":
                 proc.kill()
-                return err_str, True
-            user_outputs.append(
+                result = Result()
+                result.setError(python_ver, err_str)
+                return result
+            user_outputs.extend(
                 PythonRubric.linesToCollections(
                     output.decode("utf-8").split("\n")))
             proc.kill()
-        score = self.rubric.grade(user_outputs) - self.__lateness(submission)
-        score = score if score >= 0 else 0
-        return score, False
+        result = self.rubric.grade(user_outputs) - self.__lateness(submission)
+        if result.grade < 0:
+            result.setGrade(0)
+        return result
 
     def getResults(self):
+        print(self.GRADES)
         results = {}
         for submission in self.submissions:
-            result = self.Result()
             user = submission.user
+            print(user.name, user.id, end=" ")
+            final_result = Result()
             if submission.exists:
-                value, errors = self.__evaluateGrade("python3", submission)
-                python3_err = ""
-                if errors:
-                    python3_err = value
-                    value, errors = self.__evaluateGrade("python2", submission)
-                if errors:
-                    result.setGrade(self.default_grade)
-                    result.setErrors(value, python3_err)
+                result = self.__evaluateGrade("python3", submission)
+                if result.timed_out:
+                    final_result.timed_out = True
+                    final_result.setGrade(self.default_grade)
+                elif result.contains_errors:
+                    python3_err = result.python3_err
+                    result = self.__evaluateGrade("python2", submission)
+                    if result.timed_out:
+                        final_result.timed_out = True
+                        final_result.setGrade(self.default_grade)
+                    elif result.contains_errors:
+                        final_result.setGrade(self.default_grade)
+                        final_result.setErrors(result.python2_err, python3_err)
+                    else:
+                        final_result.setGrade(result.grade)
+                        final_result.reasons = result.reasons
                 else:
-                    result.setGrade(value)
+                    final_result.setGrade(result.grade)
+                    final_result.reasons = result.reasons
             else:
-                print(user.name, self.MISSING)
-                result.setGrade(self.default_grade)
-            results[user] = result
+                print(user.name, self.MISSING, end=" ")
+                final_result.setGrade(self.default_grade)
+            results[user] = final_result
+            print(final_result.grade)
         return results

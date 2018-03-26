@@ -91,7 +91,7 @@ class CanvasHelper:
             str(self.selected_course.id) + " " +
             self.selected_assignment.name + " Submissions")
         submissions_downloaded = False
-        users = {user.id:user for user in self.getUsers()}
+        users = {user.id: user for user in self.getUsers()}
         if os.path.exists(directory_name):
             print("Submissions already downloaded. Delete '{}' to redownload."
                   .format(directory_name))
@@ -120,15 +120,16 @@ class CanvasHelper:
             submissions.append(submission)
         return submissions
 
-    def postSubmissionGrade(self, user, grade, tries=3):
+    def postSubmissionResult(self, user, result, tries=3):
         # Manual request is used instead of canvasapi to verify that grade
         # was uploaded successfully.
         url = (
             self.api_url +
             "api/v1/courses/{}/assignments/{}/submissions/{}".format(
                 self.selected_course.id, self.selected_assignment.id, user.id))
-        headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
-        payload = {'submission': {'posted_grade': grade}}
+        headers = {"Authorization": "Bearer {}".format(self.api_token)}
+        payload = {"submission": {"posted_grade": result.grade},
+                   "comment": {"text_comment": str(result)}}
         response = requests.put(url, json=payload, headers=headers)
         for i in range(tries - 1):
             if response.status_code == 200:

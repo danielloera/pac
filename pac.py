@@ -13,7 +13,6 @@ INPUT_FILE = "input.txt"
 SUCCESS = colored("SUCCESS", "green")
 FAIL = colored("FAIL", "red")
 GRADE_UPLOAD_REPORT = colored("Grade Upload Report", "magenta")
-GRADES = colored("Grades", "magenta")
 
 
 def get_output_scheme(file):
@@ -118,10 +117,6 @@ def main():
     pg = PythonGrader(submissions, pr)
     results = pg.getResults()
 
-    print(GRADES)
-    for user, result in results.items():
-        print(user.name, user.id, result.grade)
-
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
         len(results))).lower()
 
@@ -135,7 +130,7 @@ def main():
     for user, result in results.items():
         grade = result.grade
         print(user.name, grade, end=" ")
-        submission_successful = ch.postSubmissionGrade(user, grade)
+        submission_successful = ch.postSubmissionResult(user, result)
         if submission_successful:
             print(SUCCESS)
         else:
@@ -143,6 +138,12 @@ def main():
             failed_uploads.append(user)
         if grade == pg.default_grade:
             failed_grades.append(user)
+
+    yn = input("\nShow final report? [y/n] ".format(
+        len(results))).lower()
+
+    if yn != "y":
+        return
 
     # Final report for manual grade checking
     print("\nFailed Uploads ({}):".format(len(failed_uploads)))
