@@ -120,24 +120,22 @@ def main():
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
         len(results))).lower()
 
-    if yn != "y":
-        return
-
-    # Grade uploading
-    failed_uploads = []
-    failed_grades = []
-    print(GRADE_UPLOAD_REPORT)
-    for user, result in results.items():
-        grade = result.grade
-        print(user.name, grade, end=" ")
-        submission_successful = ch.postSubmissionResult(user, result)
-        if submission_successful:
-            print(SUCCESS)
-        else:
-            print(FAIL)
-            failed_uploads.append(user)
-        if grade == pg.default_grade:
-            failed_grades.append(user)
+    if yn == "y":
+        # Grade uploading
+        failed_uploads = []
+        failed_grades = []
+        print(GRADE_UPLOAD_REPORT)
+        for user, result in results.items():
+            grade = result.grade
+            print(user.name, grade, end=" ")
+            submission_successful = ch.postSubmissionResult(user, result)
+            if submission_successful:
+                print(SUCCESS)
+            else:
+                print(FAIL)
+                failed_uploads.append(user)
+            if grade == pg.default_grade:
+                failed_grades.append(user)
 
     yn = input("\nShow final report? [y/n] ".format(
         len(results))).lower()
@@ -154,7 +152,7 @@ def main():
     print("\nFailed Grades ({}):\n".format(total_failed))
     for user in lastname_lex(failed_grades):
         print(
-            colored("({}/{})".format(index,total_failed), "red"),
+            colored("({}/{})".format(index, total_failed), "red"),
             colored(user.name, "white"),
             colored(user.id, "magenta"))
         print(colored(results[user], "white"), "\n")

@@ -5,8 +5,12 @@ import subprocess
 from termcolor import colored
 
 
+PYTHON2 = "python2"
+PYTHON3 = "python3"
+
+
 def alarm_handler(signum, frame):
-    raise Exception("Program took too long to finish...")
+    raise Exception("Program timed out.")
 
 
 class Result:
@@ -40,14 +44,12 @@ class Result:
             return ""
 
     def __str__(self):
-        default_str = "AutoGrade: {}".format(self.grade)
         problems = (self.__errorStr()
                     + self.__timedOutStr()
                     + self.__reasonsStr())
-        extra_str = ""
-        if problems != "":
-            extra_str = "\n\n This grade may not be final."
-        return default_str + problems + extra_str
+        ans = self.grade if problems == "" else "NOT Final Grade"
+        base = "Result: {}".format(ans)
+        return base + problems
 
     def setGrade(self, grade):
         self.grade = grade
@@ -62,7 +64,7 @@ class Result:
         self.reasons.extend(reasons)
 
     def setError(self, err_type, err):
-        if err_type == "python2":
+        if err_type == PYTHON2:
             self.python2_err = err
         else:
             self.python3_err = err
@@ -121,7 +123,7 @@ class PythonRubric:
                         "User output: {user}\nExpected: {expected}".format(
                             user=user_line, expected=expected_line))
             if user_len < expected_len:
-                for i in range(expected_len - user_len, expected_len):
+                for i in range(expected_len - user_len + 1, expected_len):
                     score -= scheme[i]
                     result.addReason(
                         "User output does not contain: {}".format(
@@ -198,12 +200,12 @@ class PythonGrader:
             print(user.name, user.id, end=" ")
             final_result = Result(grade=self.default_grade)
             if submission.exists:
-                result = self.__evaluateGrade("python3", submission)
+                result = self.__evaluateGrade(PYTHON3, submission)
                 if result.timed_out:
                     final_result.setTimedOut(True)
                 elif result.contains_errors:
                     python3_err = result.python3_err
-                    result = self.__evaluateGrade("python2", submission)
+                    result = self.__evaluateGrade(PYTHON2, submission)
                     if result.timed_out:
                         final_result.setTimedOut(True)
                     elif result.contains_errors:
