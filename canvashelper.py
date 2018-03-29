@@ -88,9 +88,11 @@ class CanvasHelper:
     def getSubmissions(self):
         submissions = []
         directory_name = (
+            "c" + 
             str(self.selected_course.id) + "_" +
             str(self.selected_assignment.id) + "_Submissions")
         submissions_downloaded = False
+        print("Linking Users...")
         users = {user.id: user for user in self.getUsers()}
         if os.path.exists(directory_name):
             print("Submissions already downloaded. Delete '{}' to redownload."
@@ -98,13 +100,14 @@ class CanvasHelper:
             submissions_downloaded = True
         else:
             os.makedirs(directory_name)
+            init_file = open(directory_name + "/__init__.py", "w")
+            init_file.close()
         canvas_submissions = self.selected_course.list_submissions(
             self.selected_assignment)
-        print("Linking Users...")
         for sub in canvas_submissions:
             user = users[sub.user_id]
             submission = self.Submission(user, int(sub.seconds_late))
-            new_filename = directory_name + "/" + str(user.id) + ".py"
+            new_filename = directory_name + "/u" + str(user.id) + ".py"
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
                 attachments = [att for att in
