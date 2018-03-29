@@ -8,7 +8,7 @@ from termcolor import colored
 
 PYTHON2 = "python2"
 PYTHON3 = "python3"
-PYTHON_ENVS = [PYTHON3, PYTHON2]
+PYTHON_VERSIONS = [PYTHON3, PYTHON2]
 
 class TimeoutException(Exception):
     pass
@@ -83,8 +83,9 @@ class PythonGrader:
             self.timed_out = timed_out
             self.contains_errors = False
             self.reasons = []
-            self.python2_err = None
-            self.python3_err = None
+            self.lateness = 0
+            self.python2_err = python2_err
+            self.python3_err = python3_err
             self.setErrors(python2_err, python3_err)
 
         def __errorStr(self):
@@ -112,6 +113,8 @@ class PythonGrader:
                         + self.__timedOutStr()
                         + self.__reasonsStr())
             base = "Grade: {}".format(self.grade)
+            if self.lateness:
+                base += " (-{} lateness points)".format(self.lateness)
             if problems != "":
                 base += " (NOT FINAL)"
             else:
@@ -120,6 +123,11 @@ class PythonGrader:
 
         def setGrade(self, grade):
             self.grade = grade
+
+        def setLateness(self, lateness_points):
+            self.lateness  = lateness_points
+            self.grade -= lateness_points
+            self.grade = self.grade if self.grade >= 0 else 0
 
         def setTimedOut(self, timed_out):
             self.timed_out = timed_out
@@ -150,16 +158,15 @@ class PythonGrader:
         self.late_percent = late_percent
         signal.signal(signal.SIGALRM, alarm_handler)
 
-    def __lateness(self, submission):
+    def __getLateness(self, submission):
         if submission.seconds_late > 0:
             days = ceil(submission.seconds_late / 60 / 60 / 24)
             print(submission.user.name, self.LATE,
                   "({} days)".format(days), end=" ")
-            max_score = self.rubric.max_score
             max_days = 1 / self.late_percent
             if days >= max_days:
-                return max_score
-            return max_score * self.late_percent * days
+                return self.max_score
+            return self.max_score * self.late_percent * days
         return 0
 
     def __grade(self, user_outputs):
@@ -198,44 +205,44 @@ class PythonGrader:
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE)
 
-    def __runTests(self, submission):
-        python3_err = None
-        iteration = 0
-        for python_ver in PYTHON_ENVS:
-            iteration += 1
-            user_outputs = []
-            for test in self.tests:
-                proc = self.__createProc(python_ver, submission, test)
-                output, err = None, None
-                signal.alarm(15)
-                try:
-                    output, err = proc.communicate(input=test.input)
-                    signal.alarm(0)
-                except TimeoutException:
-                    proc.kill()
-                    if iteration == 1:
-                        break
-                    return self.Result(timed_out=True, grade=self.default_grade)
+    def __runTests(self, python_ver, submission):
+        user_outputs = []
+        for test in self.tests:
+            proc = self.__createProc(python_ver, submission, test)
+            output, err = None, None
+            signal.alarm(15)
+            try:
+                output, err = proc.communicate(input=test.input)
+                signal.alarm(0)
+            except TimeoutException:
                 proc.kill()
-                err_str = err.decode("utf-8")
-                if err_str != "":
-                    if iteration == 1:
-                        python3_err = err_str
-                        break
-                    return self.Result(
-                        python2_err=err_str,
-                        python3_err=python3_err,
-                        grade=self.default_grade)
-                output_lines = output.decode("utf-8").split("\n")
-                if output_lines[-1] == "":
-                    output_lines = output_lines[:-1]
-                user_outputs.extend([output_lines])
-            if user_outputs:
-                break
+                return self.Result(timed_out=True, grade=self.default_grade)
+            proc.kill()
+            err_str = err.decode("utf-8")
+            if err_str != "":
+                return self.Result(
+                    python2_err=err_str,
+                    python3_err=err_str,
+                    grade=self.default_grade)
+            output_lines = output.decode("utf-8").split("\n")
+            if output_lines[-1] == "":
+                output_lines = output_lines[:-1]
+            user_outputs.extend([output_lines])
         result = self.__grade(user_outputs)
-        grade = result.grade - self.__lateness(submission)
-        final_grade = grade if grade >= 0 else 0
-        result.setGrade(final_grade)
+        result.setLateness(self.__getLateness(submission))
+        return result
+
+    def __getResult(self, submission):
+        result = None
+        python3_err = None
+        for python_ver in PYTHON_VERSIONS:
+            result = self.__runTests(python_ver, submission)
+            if result.contains_errors and python3_err is None:
+                python3_err = result.python3_err
+            elif not result.timed_out and not result.contains_errors:
+                return result
+        if result.contains_errors:
+            result.setErrors(result.python2_err, python3_err)
         return result
 
     def getResults(self):
@@ -246,7 +253,7 @@ class PythonGrader:
             print(user.name, user.id, end=" ")
             final_result = self.Result(grade=self.default_grade)
             if submission.exists:
-                final_result = self.__runTests(submission)
+                final_result = self.__getResult(submission)
             else:
                 print(user.name, self.MISSING, end=" ")
             results[user] = final_result
