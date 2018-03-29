@@ -8,10 +8,13 @@ from termcolor import colored
 
 PYTHON2 = "python2"
 PYTHON3 = "python3"
+PYTHON_ENVS = [PYTHON3, PYTHON2]
 
+class TimeoutException(Exception):
+    pass
 
 def alarm_handler(signum, frame):
-    raise Exception("Program timed out.")
+    raise TimeoutException
 
 
 class Test:
@@ -45,11 +48,11 @@ class Test:
 
     def __createCmd(self, function, args):
         if function is None:
-            return "import {file} as {mod}"
+            return "import {imp} as {mod}"
         else:
             args = ",".join(args)
-            return "import {file} as {mod}; {mod}.{fn}({args})".format(
-                file="{file}", mod="{mod}", fn=function, args=args)
+            return "import {imp} as {mod}; {mod}.{fn}({args})".format(
+                imp="{imp}", mod="{mod}", fn=function, args=args)
 
     def __init__(self,
                  test_input,
@@ -72,13 +75,17 @@ class PythonGrader:
 
     class Result:
 
-        def __init__(self, grade=None, timed_out=False):
+        def __init__(self, grade=None,
+                     python2_err=None,
+                     python3_err=None,
+                     timed_out=False):
             self.grade = grade
-            self.python2_err = None
-            self.python3_err = None
             self.timed_out = timed_out
             self.contains_errors = False
             self.reasons = []
+            self.python2_err = None
+            self.python3_err = None
+            self.setErrors(python2_err, python3_err)
 
         def __errorStr(self):
             if self.contains_errors:
@@ -104,8 +111,11 @@ class PythonGrader:
             problems = (self.__errorStr()
                         + self.__timedOutStr()
                         + self.__reasonsStr())
-            ans = self.grade if problems == "" else "NOT Final Grade"
-            base = "Result: {}".format(ans)
+            base = "Grade: {}".format(self.grade)
+            if problems != "":
+                base += " (NOT FINAL)"
+            else:
+                base += " :)"
             return base + problems
 
         def setGrade(self, grade):
@@ -120,21 +130,22 @@ class PythonGrader:
         def addReasons(self, reasons):
             self.reasons.extend(reasons)
 
-        def setError(self, err_type, err):
-            if err_type == PYTHON2:
-                self.python2_err = err
-            else:
-                self.python3_err = err
-            self.contains_errors = True
-
         def setErrors(self, p2err, p3err):
+            if p2err is None or p3err is None:
+                return
             self.python2_err = p2err
             self.python3_err = p3err
             self.contains_errors = True
 
-    def __init__(self, submissions, tests, default_grade=0, late_percent=0.05):
+    def __init__(self,
+                 submissions,
+                 tests,
+                 max_score,
+                 default_grade=0,
+                 late_percent=0.05):
         self.submissions = submissions
         self.tests = tests
+        self.max_score = max_score
         self.default_grade = default_grade
         self.late_percent = late_percent
         signal.signal(signal.SIGALRM, alarm_handler)
@@ -153,7 +164,7 @@ class PythonGrader:
 
     def __grade(self, user_outputs):
         result = self.Result()
-        score = 0
+        score = self.max_score
         for i in range(len(self.tests)):
             user_output = user_outputs[i]
             expected_output = self.tests[i].output
@@ -177,40 +188,57 @@ class PythonGrader:
         result.setGrade(score)
         return result
 
-    def __runTests(self, python_ver, submission):
-        user_outputs = []
-        for test in self.tests:
-            import_name = submission.filename[:-3].replace("/", ".")
-            module_name = "module_{}".format(submission.user.id)
-            cmd = test.cmd.format(file=import_name, mod=module_name)
-            proc = subprocess.Popen(
-                [python_ver, "-c", cmd],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                stdin=subprocess.PIPE)
-            output, err = None, None
-            signal.alarm(15)
-            try:
-                output, err = proc.communicate(input=test.input)
-                signal.alarm(0)
-            except Exception as e:
-                signal.alarm(0)
+    def __createProc(self, python_ver, submission, test):
+        import_name = submission.filename[:-3].replace("/", ".")
+        module_name = "module_{}".format(submission.user.id)
+        cmd = test.cmd.format(imp=import_name, mod=module_name)
+        return subprocess.Popen(
+            [python_ver, "-c", cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE)
+
+    def __runTests(self, submission):
+        python3_err = None
+        iteration = 0
+        for python_ver in PYTHON_ENVS:
+            iteration += 1
+            user_outputs = []
+            for test in self.tests:
+                proc = self.__createProc(python_ver, submission, test)
+                output, err = None, None
+                signal.alarm(15)
+                try:
+                    output, err = proc.communicate(input=test.input)
+                    signal.alarm(0)
+                except TimeoutException:
+                    proc.kill()
+                    if iteration == 1:
+                        break
+                    return self.Result(timed_out=True, grade=self.default_grade)
                 proc.kill()
-                return self.Result(timed_out=True)
-            if err_str != "":
-                proc.kill()
-                result = self.Result()
-                result.setError(python_ver, err_str)
-                return result
-            output_lines = output.decode("utf-8").split("\n")
-            if output_lines[-1] == "":
-                output_lines = output_lines[:-1]
-            user_outputs.extend([output_lines])
-            proc.kill()
-        result = self.__grade(user_outputs) #- self.__lateness(submission)
+                err_str = err.decode("utf-8")
+                if err_str != "":
+                    if iteration == 1:
+                        python3_err = err_str
+                        break
+                    return self.Result(
+                        python2_err=err_str,
+                        python3_err=python3_err,
+                        grade=self.default_grade)
+                output_lines = output.decode("utf-8").split("\n")
+                if output_lines[-1] == "":
+                    output_lines = output_lines[:-1]
+                user_outputs.extend([output_lines])
+            if user_outputs:
+                break
+        result = self.__grade(user_outputs)
+        grade = result.grade - self.__lateness(submission)
+        final_grade = grade if grade >= 0 else 0
+        result.setGrade(final_grade)
         return result
 
-    def getResults(self, max_score=100):
+    def getResults(self):
         print(self.GRADES)
         results = {}
         for submission in self.submissions:
@@ -218,29 +246,9 @@ class PythonGrader:
             print(user.name, user.id, end=" ")
             final_result = self.Result(grade=self.default_grade)
             if submission.exists:
-                result = self.__runTests(PYTHON3, submission)
-                if result.timed_out:
-                    final_result.setTimedOut(True)
-                elif result.contains_errors:
-                    python3_err = result.python3_err
-                    result = self.__runTests(PYTHON2, submission)
-                    if result.timed_out:
-                        final_result.setTimedOut(True)
-                    elif result.contains_errors:
-                        final_result.setErrors(result.python2_err, python3_err)
-                    else:
-                        final_result.setGrade(result.grade)
-                        final_result.addReasons(result.reasons)
-                else:
-                    final_result.setGrade(result.grade)
-                    final_result.addReasons(result.reasons)
+                final_result = self.__runTests(submission)
             else:
                 print(user.name, self.MISSING, end=" ")
-            # Add the (possibly) negative grade from testing
-            # to the max score to get the students final_grade
-            final_grade = max_score + final_result.grade
-            final_grade = final_grade if final_grade >= 0 else 0
-            final_result.setGrade(final_grade)
             results[user] = final_result
             print(final_result.grade)
         return results

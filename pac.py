@@ -6,9 +6,6 @@ from termcolor import colored
 
 GRADING_TERM = "Spring 2018"
 
-OUTPUT_SCHEME_FILE = "output_scheme.txt"
-INPUT_FILE = "input.txt"
-
 # Termcolor constants
 SUCCESS = colored("SUCCESS", "green")
 FAIL = colored("FAIL", "red")
@@ -45,16 +42,14 @@ def main():
 
     # Grading
     print("Grading...")
-    pg = PythonGrader(submissions, tests)
-    results = pg.getResults(max_score=assignment_points)
+    pg = PythonGrader(submissions, tests, assignment_points)
+    results = pg.getResults()
 
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
         len(results))).lower()
 
-
-    failed_uploads = []
-    failed_grades = []
     if yn == "y":
+        failed_uploads = []
         # Grade uploading
         print(GRADE_UPLOAD_REPORT)
         for user, result in results.items():
@@ -66,8 +61,6 @@ def main():
             else:
                 print(FAIL)
                 failed_uploads.append(user)
-            if grade == pg.default_grade:
-                failed_grades.append(user)
 
     yn = input("\nShow final report? [y/n] ".format(
         len(results))).lower()
@@ -75,16 +68,16 @@ def main():
     if yn != "y":
         return
 
+    final_report = [user for user, result in results.items()
+                    if result.grade < assignment_points]
+
     # Final report for manual grade checking
-    print("\nFailed Uploads ({}):".format(len(failed_uploads)))
-    for user in lastname_lex(failed_uploads):
-        print(user.name, user.id)
-    total_failed = len(failed_grades)
+    total_report = len(final_report)
     index = 1
-    print("\nFailed Grades ({}):\n".format(total_failed))
-    for user in lastname_lex(failed_grades):
+    print("\nFailed Grades ({}):\n".format(total_report))
+    for user in lastname_lex(final_report):
         print(
-            colored("({}/{})".format(index, total_failed), "red"),
+            colored("({}/{})".format(index, total_report), "red"),
             colored(user.name, "white"),
             colored(user.id, "magenta"))
         print(colored(results[user], "white"), "\n")
