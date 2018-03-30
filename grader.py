@@ -52,7 +52,7 @@ class Test:
         if module is None:
             module = "__main__"
         if not code:
-            return "import {imp} as {mod}".format(mod=module)
+            return "import {imp} as {mod}".format(imp="{imp}", mod=module)
         else:
             code = "\n".join(code)
             return "import {imp} as {mod}\n{code}".format(
