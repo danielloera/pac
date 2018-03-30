@@ -26,46 +26,53 @@ class Test:
     INPUT = "input"
     OUTPUT = "output"
     SCHEME = "scheme"
-    FUNCTION = "function"
-    ARGS = "args"
+    MODULE = "module"
+    CODE = "code"
 
     @classmethod
     def FromJson(cls, json_file=DEFAULT_FILE):
         main_dict = json.load(open(json_file))
         tests = []
         for test_dict in main_dict[cls.TESTS]:
-            function = None
-            args = None
-            if cls.FUNCTION in test_dict:
-                function = test_dict[cls.FUNCTION]
-                args = test_dict[cls.ARGS]
+            module = None
+            code = None
+            if cls.MODULE in test_dict:
+                module = test_dict[cls.MODULE]
+            if cls.CODE in test_dict:
+                code = test_dict[cls.CODE]
             test = cls(test_dict[cls.INPUT],
                        test_dict[cls.OUTPUT],
                        test_dict[cls.SCHEME],
-                       function,
-                       args)
+                       module,
+                       code)
             tests.append(test)
         return tests
 
-    def __createCmd(self, function, args):
-        if function is None:
-            return "import {imp} as {mod}"
+    def __createCmdTemplate(self, module, code):
+        if module is None:
+            module = "__main__"
+        if not code:
+            return "import {imp} as {mod}".format(mod=module)
         else:
-            args = ",".join(args)
-            return "import {imp} as {mod}; {mod}.{fn}({args})".format(
-                imp="{imp}", mod="{mod}", fn=function, args=args)
+            code = "\n".join(code)
+            return "import {imp} as {mod}\n{code}".format(
+                imp="{imp}", mod=module, code=code)
 
     def __init__(self,
                  test_input,
                  output,
                  scheme,
-                 function=None,
-                 args=None):
+                 module=None,
+                 code=None):
         self.input = "".join([(i + "\n")
                               for i in test_input]).encode("utf-8")
         self.output = output
         self.scheme = scheme
-        self.cmd = self.__createCmd(function, args)
+        self.cmd_template = self.__createCmdTemplate(module, code)
+
+    def getCmd(self, filename):
+        import_name = filename[:-3].replace("/", ".")
+        return self.cmd_template.format(imp=import_name)
 
 
 class PythonGrader:
@@ -154,12 +161,14 @@ class PythonGrader:
                  tests,
                  max_score,
                  default_grade=0,
-                 late_percent=0.05):
+                 late_percent=0.05,
+                 timeout=15):
         self.submissions = submissions
         self.tests = tests
         self.max_score = max_score
         self.default_grade = default_grade
         self.late_percent = late_percent
+        self.timeout = timeout
         signal.signal(signal.SIGALRM, alarm_handler)
 
     def __getLateness(self, submission):
@@ -199,22 +208,16 @@ class PythonGrader:
         result.setGrade(score)
         return result
 
-    def __createProc(self, python_ver, submission, test):
-        import_name = submission.filename[:-3].replace("/", ".")
-        module_name = "module_{}".format(submission.user.id)
-        cmd = test.cmd.format(imp=import_name, mod=module_name)
-        return subprocess.Popen(
-            [python_ver, "-c", cmd],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE)
-
     def __runTests(self, python_ver, submission):
         user_outputs = []
         for test in self.tests:
-            proc = self.__createProc(python_ver, submission, test)
+            proc = subprocess.Popen(
+                [python_ver, "-c", test.getCmd(submission.filename)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE)
             output, err = None, None
-            signal.alarm(15)
+            signal.alarm(self.timeout)
             try:
                 output, err = proc.communicate(input=test.input)
                 signal.alarm(0)
