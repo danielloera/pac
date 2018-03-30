@@ -10,8 +10,10 @@ PYTHON2 = "python2"
 PYTHON3 = "python3"
 PYTHON_VERSIONS = [PYTHON3, PYTHON2]
 
+
 class TimeoutException(Exception):
     pass
+
 
 def alarm_handler(signum, frame):
     raise TimeoutException
@@ -45,7 +47,6 @@ class Test:
             tests.append(test)
         return tests
 
-
     def __createCmd(self, function, args):
         if function is None:
             return "import {imp} as {mod}"
@@ -78,7 +79,9 @@ class PythonGrader:
         def __init__(self, grade=None,
                      python2_err=None,
                      python3_err=None,
-                     timed_out=False):
+                     timed_out=False,
+                     missing=False):
+            self.missing = missing
             self.grade = grade
             self.timed_out = timed_out
             self.contains_errors = False
@@ -117,7 +120,8 @@ class PythonGrader:
                 base += " (-{} lateness points)".format(self.lateness)
             if problems != "":
                 base += " (NOT FINAL)"
-            else:
+            elif not self.missing and self.lateness == 0:
+                # Good student confirmed ;)
                 base += " :)"
             return base + problems
 
@@ -125,7 +129,7 @@ class PythonGrader:
             self.grade = grade
 
         def setLateness(self, lateness_points):
-            self.lateness  = lateness_points
+            self.lateness = lateness_points
             self.grade -= lateness_points
             self.grade = self.grade if self.grade >= 0 else 0
 
@@ -251,7 +255,7 @@ class PythonGrader:
         for submission in self.submissions:
             user = submission.user
             print(user.name, user.id, end=" ")
-            final_result = self.Result(grade=self.default_grade)
+            final_result = self.Result(grade=self.default_grade, missing=True)
             if submission.exists:
                 final_result = self.__getResult(submission)
             else:

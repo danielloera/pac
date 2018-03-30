@@ -88,7 +88,7 @@ class CanvasHelper:
     def getSubmissions(self):
         submissions = []
         directory_name = (
-            "c" + 
+            "c" +
             str(self.selected_course.id) + "_" +
             str(self.selected_assignment.id) + "_Submissions")
         submissions_downloaded = False
