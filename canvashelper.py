@@ -56,6 +56,12 @@ class CanvasHelper:
                      self.__getSubmissionDate(attachment[CREATED_AT_ATTR])))
         return attachments[0]
 
+    def __updateAssignmentSelection(self):
+        idx = 0
+        for assn in self.selected_course.get_assignments():
+            self.assignments[idx] = assn
+            idx += 1
+
     def showCourseSelection(self):
         print("\nAvailable Courses:")
         for cidx, course in self.courses.items():
@@ -67,14 +73,8 @@ class CanvasHelper:
     def getUsers(self):
         return self.selected_course.get_users()
 
-    def updateAssignmentSelection(self):
-        idx = 0
-        for assn in self.selected_course.get_assignments():
-            self.assignments[idx] = assn
-            idx += 1
-
     def showAssignmentSelection(self):
-        self.updateAssignmentSelection()
+        self.__updateAssignmentSelection()
         print("\nAvailable Assignments:")
         for aidx, assn in self.assignments.items():
             print(str(aidx) + ":", assn.name)
