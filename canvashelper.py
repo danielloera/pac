@@ -102,8 +102,7 @@ class CanvasHelper:
             os.makedirs(directory_name)
             init_file = open(directory_name + "/__init__.py", "w")
             init_file.close()
-        canvas_submissions = self.selected_course.list_submissions(
-            self.selected_assignment)
+        canvas_submissions = self.selected_assignment.get_submissions()
         for sub in canvas_submissions:
             user = users[sub.user_id]
             submission = self.Submission(user, int(sub.seconds_late))

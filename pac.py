@@ -64,6 +64,7 @@ def main():
             print(colored(results[user], "white"), "\n")
             index += 1
             q = input(REPORT_MESSAGE)
+            print()
             if q == "q":
                 break
 
