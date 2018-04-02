@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 import os
 import requests
-import wget
+import sys
 
 default_api_url = "https://utexas.instructure.com/"
 
@@ -18,6 +18,7 @@ class CanvasHelper:
     FILENAME_ATTR = "filename"
     CREATED_AT_ATTR = "created_at"
     URL_ATTR = "url"
+    TEMP_FILENAME = "temp.dat"
 
     class Submission:
 
@@ -44,6 +45,20 @@ class CanvasHelper:
         self.assignments = {}
         self.selected_course = None
         self.selected_assignment = None
+
+    def __printProgress(self, current_user, total_users):
+        sys.stdout.write("\r")
+        percent = int((current_user / total_users) * 100)
+        sys.stdout.write("({n}/{d}) {p}%".format(
+            n=current_user, d=total_users, p=percent))
+        sys.stdout.flush()
+
+    def __downloadSubmissionIntoTemp(self, url):
+        response = requests.get(url, stream=True)
+        with open(self.TEMP_FILENAME, "wb") as temp_file:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    temp_file.write(chunk)
 
     def __getSubmissionDate(self, date_str):
         return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
@@ -92,8 +107,9 @@ class CanvasHelper:
             str(self.selected_course.id) + "_" +
             str(self.selected_assignment.id) + "_Submissions")
         submissions_downloaded = False
-        print("Linking Users...")
         users = {user.id: user for user in self.getUsers()}
+        total_users = len(users)
+        current_user = 1
         if os.path.exists(directory_name):
             print("Submissions already downloaded. Delete '{}' to redownload."
                   .format(directory_name))
@@ -104,6 +120,8 @@ class CanvasHelper:
             init_file.close()
         canvas_submissions = self.selected_assignment.get_submissions()
         for sub in canvas_submissions:
+            self.__printProgress(current_user, total_users)
+            current_user += 1
             user = users[sub.user_id]
             submission = self.Submission(user, int(sub.seconds_late))
             new_filename = directory_name + "/u" + str(user.id) + ".py"
@@ -116,8 +134,8 @@ class CanvasHelper:
                     latest_submission = self.__getLatestSubmission(attachments)
                     url = latest_submission[self.URL_ATTR]
                     if not submissions_downloaded:
-                        raw_filename = wget.download(url)
-                        os.rename(raw_filename, new_filename)
+                        self.__downloadSubmissionIntoTemp(url)
+                        os.rename(self.TEMP_FILENAME, new_filename)
                     submission.setFilename(new_filename)
             submissions.append(submission)
         return submissions
