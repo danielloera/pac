@@ -2,17 +2,17 @@ from canvashelper import CanvasHelper
 from grader import PythonGrader
 from grader import TestSet
 import os
-from termcolor import colored
+import utils
 
 GRADING_TERM = "Spring 2018"
 
 # Termcolor constants
-TITLE = colored("Python Autograder for Canvas", "magenta")
-SUCCESS = colored("SUCCESS", "green")
-FAIL = colored("FAIL", "red")
-GRADE_UPLOAD_REPORT = colored("Grade Upload Report", "magenta")
-REPORT_MESSAGE = colored(
-    "press [ENTER] for next grade result or [q] to skip ", "green")
+TITLE = utils.colored("Python Autograder for Canvas", "pink")
+SUCCESS = utils.colored("SUCCESS", "green")
+FAIL = utils.colored("FAIL", "red")
+GRADE_UPLOAD_REPORT = utils.colored("Grade Upload Report", "purple")
+REPORT_MESSAGE = utils.colored(
+    "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
 
 
 def lastname_lex(users):
@@ -56,12 +56,13 @@ def main():
         print("\nFailed Grades ({}):\n".format(total_report))
         for user in lastname_lex(results.keys()):
             print(
-                colored("({}/{})".format(index, total_report), "red"),
-                colored(user.name, "white"),
-                colored(user.id, "magenta"))
-            print(colored(results[user], "white"), "\n")
+                utils.colored("({}/{})".format(index, total_report), "red"),
+                utils.colored(user.name, "white"),
+                utils. colored(user.id, "purple"))
+            print(utils.colored(results[user], "white"), "\n")
             index += 1
             q = input(REPORT_MESSAGE)
+            print()
             if q == "q":
                 break
 

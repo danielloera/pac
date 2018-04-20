@@ -3,7 +3,7 @@ from math import ceil
 import os
 import signal
 import subprocess
-from termcolor import colored
+import utils
 
 
 PYTHON2 = "python2"
@@ -84,9 +84,9 @@ class TestSet:
 
 class PythonGrader:
 
-    LATE = colored("LATE", "yellow")
-    MISSING = colored("MISSING", "red")
-    GRADES = colored("Grades:", "magenta")
+    LATE = utils.colored("LATE", "yellow")
+    MISSING = utils.colored("MISSING", "red")
+    GRADES = utils.colored("Grades:", "purple")
 
     class Result:
 
