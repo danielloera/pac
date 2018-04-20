@@ -1,9 +1,10 @@
 import json
 from math import ceil
 import os
+import shutil
 import signal
 import subprocess
-import utils
+import util
 
 
 PYTHON2 = "python2"
@@ -19,9 +20,8 @@ def alarm_handler(signum, frame):
     raise TimeoutException
 
 
-class TestSet:
+class TestSuite:
 
-    DEFAULT_FILE = "testset.json"
     MAX_SCORE = "max_score"
     TESTS = "tests"
     INPUT = "input"
@@ -29,6 +29,7 @@ class TestSet:
     SCHEME = "scheme"
     MODULE = "module"
     CODE = "code"
+    REQUIREMENTS = "requirements"
 
     class Test:
 
@@ -47,46 +48,54 @@ class TestSet:
                      output,
                      scheme,
                      module=None,
-                     code=None):
+                     code=None,
+                     requirements=None):
             self.input = "".join([(i + "\n")
                                   for i in test_input]).encode("utf-8")
             self.output = output
             self.scheme = scheme
             self.cmd_template = self.__createCmdTemplate(module, code)
+            self.requirements = requirements
 
-        def getCmd(self, filename):
-            import_name = filename[:-3].replace("/", ".")
+        def getCmd(self, path):
+            import_name = path[:-3].replace("/", ".")
             return self.cmd_template.format(imp=import_name)
 
-    def __init__(self, max_score, tests):
+        def hasRequirements(self):
+            return not (not self.requirements)
+
+    def __init__(self, requirement_directory, max_score, tests):
+        self.requirement_directory = requirement_directory
         self.max_score = max_score
         self.tests = tests
 
     @classmethod
-    def FromJson(cls, json_file=DEFAULT_FILE):
+    def CreateWith(cls, requirement_directory=None, json_file=None):
         main_dict = json.load(open(json_file))
         tests = []
         max_score = main_dict[cls.MAX_SCORE]
         for test_dict in main_dict[cls.TESTS]:
-            module = None
-            code = None
-            if cls.MODULE in test_dict:
-                module = test_dict[cls.MODULE]
-            if cls.CODE in test_dict:
-                code = test_dict[cls.CODE]
+            module = test_dict.get(cls.MODULE, None)
+            code = test_dict.get(cls.CODE, None)
+            requirements = test_dict.get(cls.REQUIREMENTS, None)
             tests.append(cls.Test(test_dict[cls.INPUT],
-                              test_dict[cls.OUTPUT],
-                              test_dict[cls.SCHEME],
-                              module,
-                              code))
-        return cls(max_score, tests)
+                                  test_dict[cls.OUTPUT],
+                                  test_dict[cls.SCHEME],
+                                  module,
+                                  code,
+                                  requirements))
+        return cls(requirement_directory, max_score, tests)
+
+    def addRequirementsFrom(self, test):
+        for requirement in test.requirements:
+            shutil.copy2(requirement, self.requirement_directory)
 
 
 class PythonGrader:
 
-    LATE = utils.colored("LATE", "yellow")
-    MISSING = utils.colored("MISSING", "red")
-    GRADES = utils.colored("Grades:", "purple")
+    LATE = util.colored("LATE", "yellow")
+    MISSING = util.colored("MISSING", "red")
+    GRADES = util.colored("Grades:", "purple")
 
     class Result:
 
@@ -165,12 +174,12 @@ class PythonGrader:
 
     def __init__(self,
                  submissions,
-                 testset,
+                 testsuite,
                  default_grade=0,
                  late_percent=0.05,
                  timeout=15):
         self.submissions = submissions
-        self.testset = testset
+        self.testsuite = testsuite
         self.default_grade = default_grade
         self.late_percent = late_percent
         self.timeout = timeout
@@ -183,15 +192,15 @@ class PythonGrader:
                   "({} days)".format(days), end=" ")
             max_days = 1 / self.late_percent
             if days >= max_days:
-                return self.testset.max_score
-            return self.testset.max_score * self.late_percent * days
+                return self.testsuite.max_score
+            return self.testsuite.max_score * self.late_percent * days
         return 0
 
     def __grade(self, user_outputs):
         result = self.Result()
-        score = self.testset.max_score
-        for i in range(len(self.testset.tests)):
-            test = self.testset.tests[i]
+        score = self.testsuite.max_score
+        for i in range(len(self.testsuite.tests)):
+            test = self.testsuite.tests[i]
             user_output = user_outputs[i]
             expected_output = test.output
             scheme = test.scheme
@@ -216,9 +225,11 @@ class PythonGrader:
 
     def __runTests(self, python_ver, submission):
         user_outputs = []
-        for test in self.testset.tests:
+        for test in self.testsuite.tests:
+            if test.hasRequirements():
+                self.testsuite.addRequirementsFrom(test)
             proc = subprocess.Popen(
-                [python_ver, "-c", test.getCmd(submission.filename)],
+                [python_ver, "-c", test.getCmd(submission.path)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE)

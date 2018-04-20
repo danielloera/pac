@@ -1,22 +1,19 @@
 from canvashelper import CanvasHelper
 from grader import PythonGrader
-from grader import TestSet
+from grader import TestSuite
 import os
-import utils
+import util
 
 GRADING_TERM = "Spring 2018"
+DEFAULT_TEST_FILE = "testsuite.json"
 
 # Termcolor constants
-TITLE = utils.colored("Python Autograder for Canvas", "pink")
-SUCCESS = utils.colored("SUCCESS", "green")
-FAIL = utils.colored("FAIL", "red")
-GRADE_UPLOAD_REPORT = utils.colored("Grade Upload Report", "purple")
-REPORT_MESSAGE = utils.colored(
+TITLE = util.colored("Python Autograder for Canvas", "pink")
+SUCCESS = util.colored("SUCCESS", "green")
+FAIL = util.colored("FAIL", "red")
+GRADE_UPLOAD_REPORT = util.colored("Grade Upload Report", "purple")
+REPORT_MESSAGE = util.colored(
     "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
-
-
-def lastname_lex(users):
-    return sorted(users, key=lambda user: user.name.split()[1].upper())
 
 
 def main():
@@ -37,13 +34,15 @@ def main():
     print("Downloading submissions...")
     submissions = ch.getSubmissions()
 
-    # Test collection
+    # Test Suite Creation
 
-    testset = TestSet.FromJson()
+    testsuite = TestSuite.CreateWith(
+        json_file=DEFAULT_TEST_FILE,
+        requirement_directory=ch.getSubmissionsDirectory())
 
     # Grading
     print("Grading...")
-    pg = PythonGrader(submissions, testset)
+    pg = PythonGrader(submissions, testsuite)
     results = pg.getResults()
 
     yn = input("\nShow final report? [y/n] ".format(
@@ -54,12 +53,12 @@ def main():
         total_report = len(results)
         index = 1
         print("\nFailed Grades ({}):\n".format(total_report))
-        for user in lastname_lex(results.keys()):
+        for user in util.lastname_lex(results.keys()):
             print(
-                utils.colored("({}/{})".format(index, total_report), "red"),
-                utils.colored(user.name, "white"),
-                utils. colored(user.id, "purple"))
-            print(utils.colored(results[user], "white"), "\n")
+                util.colored("({}/{})".format(index, total_report), "red"),
+                util.colored(user.name, "white"),
+                util.colored(user.id, "purple"))
+            print(util.colored(results[user], "white"), "\n")
             index += 1
             q = input(REPORT_MESSAGE)
             print()

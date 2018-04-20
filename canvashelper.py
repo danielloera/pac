@@ -22,14 +22,14 @@ class CanvasHelper:
 
     class Submission:
 
-        def __init__(self, user, seconds_late, filename=None):
+        def __init__(self, user, seconds_late):
             self.user = user
             self.seconds_late = seconds_late
-            self.filename = filename
+            self.path = None
             self.exists = False
 
-        def setFilename(self, filename):
-            self.filename = filename
+        def setPath(self, path):
+            self.path = path
             self.exists = True
 
     def __init__(self,
@@ -77,6 +77,12 @@ class CanvasHelper:
             self.assignments[idx] = assn
             idx += 1
 
+    def getSubmissionsDirectory(self):
+        return (
+            "c" +
+            str(self.selected_course.id) + "_" +
+            str(self.selected_assignment.id) + "_Submissions")
+
     def showCourseSelection(self):
         print("\nAvailable Courses:")
         for cidx, course in self.courses.items():
@@ -102,10 +108,7 @@ class CanvasHelper:
 
     def getSubmissions(self):
         submissions = []
-        directory_name = (
-            "c" +
-            str(self.selected_course.id) + "_" +
-            str(self.selected_assignment.id) + "_Submissions")
+        directory_name = self.getSubmissionsDirectory()
         submissions_downloaded = False
         users = {user.id: user for user in self.getUsers()}
         total_users = len(users)
@@ -136,7 +139,7 @@ class CanvasHelper:
                     if not submissions_downloaded:
                         self.__downloadSubmissionIntoTemp(url)
                         os.rename(self.TEMP_FILENAME, new_filename)
-                    submission.setFilename(new_filename)
+                    submission.setPath(new_filename)
             submissions.append(submission)
         return submissions
 

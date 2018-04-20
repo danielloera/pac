@@ -21,3 +21,7 @@ class Colors:
 
 def colored(output, color):
     return Colors.fg[color] + str(output) + Colors.reset
+
+
+def lastname_lex(users):
+    return sorted(users, key=lambda user: user.name.split()[1].upper())
