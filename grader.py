@@ -19,9 +19,10 @@ def alarm_handler(signum, frame):
     raise TimeoutException
 
 
-class Test:
+class TestSet:
 
-    DEFAULT_FILE = "tests.json"
+    DEFAULT_FILE = "testset.json"
+    MAX_SCORE = "max_score"
     TESTS = "tests"
     INPUT = "input"
     OUTPUT = "output"
@@ -29,10 +30,43 @@ class Test:
     MODULE = "module"
     CODE = "code"
 
+    class Test:
+
+        def __createCmdTemplate(self, module, code):
+            if module is None:
+                module = "__main__"
+            if not code:
+                return "import {imp} as {mod}".format(imp="{imp}", mod=module)
+            else:
+                code = "\n".join(code)
+                return "import {imp} as {mod}\n{code}".format(
+                    imp="{imp}", mod=module, code=code)
+
+        def __init__(self,
+                     test_input,
+                     output,
+                     scheme,
+                     module=None,
+                     code=None):
+            self.input = "".join([(i + "\n")
+                                  for i in test_input]).encode("utf-8")
+            self.output = output
+            self.scheme = scheme
+            self.cmd_template = self.__createCmdTemplate(module, code)
+
+        def getCmd(self, filename):
+            import_name = filename[:-3].replace("/", ".")
+            return self.cmd_template.format(imp=import_name)
+
+    def __init__(self, max_score, tests):
+        self.max_score = max_score
+        self.tests = tests
+
     @classmethod
     def FromJson(cls, json_file=DEFAULT_FILE):
         main_dict = json.load(open(json_file))
         tests = []
+        max_score = main_dict[cls.MAX_SCORE]
         for test_dict in main_dict[cls.TESTS]:
             module = None
             code = None
@@ -40,39 +74,12 @@ class Test:
                 module = test_dict[cls.MODULE]
             if cls.CODE in test_dict:
                 code = test_dict[cls.CODE]
-            test = cls(test_dict[cls.INPUT],
-                       test_dict[cls.OUTPUT],
-                       test_dict[cls.SCHEME],
-                       module,
-                       code)
-            tests.append(test)
-        return tests
-
-    def __createCmdTemplate(self, module, code):
-        if module is None:
-            module = "__main__"
-        if not code:
-            return "import {imp} as {mod}".format(imp="{imp}", mod=module)
-        else:
-            code = "\n".join(code)
-            return "import {imp} as {mod}\n{code}".format(
-                imp="{imp}", mod=module, code=code)
-
-    def __init__(self,
-                 test_input,
-                 output,
-                 scheme,
-                 module=None,
-                 code=None):
-        self.input = "".join([(i + "\n")
-                              for i in test_input]).encode("utf-8")
-        self.output = output
-        self.scheme = scheme
-        self.cmd_template = self.__createCmdTemplate(module, code)
-
-    def getCmd(self, filename):
-        import_name = filename[:-3].replace("/", ".")
-        return self.cmd_template.format(imp=import_name)
+            tests.append(Test(test_dict[cls.INPUT],
+                              test_dict[cls.OUTPUT],
+                              test_dict[cls.SCHEME],
+                              module,
+                              code))
+        return cls(max_score, tests)
 
 
 class PythonGrader:
@@ -158,14 +165,12 @@ class PythonGrader:
 
     def __init__(self,
                  submissions,
-                 tests,
-                 max_score,
+                 testset,
                  default_grade=0,
                  late_percent=0.05,
                  timeout=15):
         self.submissions = submissions
-        self.tests = tests
-        self.max_score = max_score
+        self.testset = testset
         self.default_grade = default_grade
         self.late_percent = late_percent
         self.timeout = timeout
@@ -178,17 +183,18 @@ class PythonGrader:
                   "({} days)".format(days), end=" ")
             max_days = 1 / self.late_percent
             if days >= max_days:
-                return self.max_score
-            return self.max_score * self.late_percent * days
+                return self.testset.max_score
+            return self.testset.max_score * self.late_percent * days
         return 0
 
     def __grade(self, user_outputs):
         result = self.Result()
-        score = self.max_score
-        for i in range(len(self.tests)):
+        score = self.testset.max_score
+        for i in range(len(self.testset.tests)):
+            test = self.testset.tests[i]
             user_output = user_outputs[i]
-            expected_output = self.tests[i].output
-            scheme = self.tests[i].scheme
+            expected_output = test.output
+            scheme = test.scheme
             user_len = len(user_output)
             expected_len = len(expected_output)
             for j in range(min(user_len, expected_len)):
@@ -210,7 +216,7 @@ class PythonGrader:
 
     def __runTests(self, python_ver, submission):
         user_outputs = []
-        for test in self.tests:
+        for test in self.testset.tests:
             proc = subprocess.Popen(
                 [python_ver, "-c", test.getCmd(submission.filename)],
                 stdout=subprocess.PIPE,

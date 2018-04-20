@@ -1,6 +1,6 @@
 from canvashelper import CanvasHelper
 from grader import PythonGrader
-from grader import Test
+from grader import TestSet
 import os
 from termcolor import colored
 
@@ -37,15 +37,13 @@ def main():
     print("Downloading submissions...")
     submissions = ch.getSubmissions()
 
-    assignment_points = ch.getAssignment().points_possible
-
     # Test collection
 
-    tests = Test.FromJson()
+    testset = TestSet.FromJson()
 
     # Grading
     print("Grading...")
-    pg = PythonGrader(submissions, tests, assignment_points)
+    pg = PythonGrader(submissions, testset)
     results = pg.getResults()
 
     yn = input("\nShow final report? [y/n] ".format(
