@@ -74,7 +74,7 @@ class TestSet:
                 module = test_dict[cls.MODULE]
             if cls.CODE in test_dict:
                 code = test_dict[cls.CODE]
-            tests.append(Test(test_dict[cls.INPUT],
+            tests.append(cls.Test(test_dict[cls.INPUT],
                               test_dict[cls.OUTPUT],
                               test_dict[cls.SCHEME],
                               module,
