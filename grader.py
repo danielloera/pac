@@ -30,6 +30,8 @@ class TestSuite:
     MODULE = "module"
     CODE = "code"
     REQUIREMENTS = "requirements"
+    REQ_FILE = "file"
+    REQ_RENAME = "rename"
 
     class Test:
 
@@ -70,7 +72,7 @@ class TestSuite:
         self.tests = tests
 
     @classmethod
-    def CreateWith(cls, requirement_directory=None, json_file=None):
+    def CreateWith(cls, json_file=None, requirement_directory=None,):
         main_dict = json.load(open(json_file))
         tests = []
         max_score = main_dict[cls.MAX_SCORE]
@@ -88,7 +90,11 @@ class TestSuite:
 
     def addRequirementsFrom(self, test):
         for requirement in test.requirements:
-            shutil.copy2(requirement, self.requirement_directory)
+            req_file = requirement[self.REQ_FILE]
+            req_rename = requirement.get(self.REQ_RENAME, None)
+            req_rename = req_file if req_rename is None else req_rename
+            shutil.copy(
+                req_file, self.requirement_directory + "/" + req_rename)
 
 
 class PythonGrader:
