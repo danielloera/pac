@@ -99,7 +99,6 @@ class TestSuite:
 
 class PythonGrader:
 
-    ALL = "all"
     LATE = util.colored("LATE", "yellow")
     MISSING = util.colored("MISSING", "red")
     GRADES = util.colored("Grades:", "purple")
@@ -276,7 +275,7 @@ class PythonGrader:
             result.setErrors(result.python2_err, python3_err)
         return result
 
-    def getResults(self, students=None):
+    def getResults(self):
         print(self.GRADES)
         results = {}
         for submission in self.submissions:
