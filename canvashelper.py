@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 import os
 import requests
-import wget
+import sys
 
 default_api_url = "https://utexas.instructure.com/"
 
@@ -16,20 +16,20 @@ class CanvasHelper:
 
     ATTACHMENTS_ATTR = "attachments"
     FILENAME_ATTR = "filename"
-    MODIFIED_AT_ATTR = "modified_at"
+    CREATED_AT_ATTR = "created_at"
     URL_ATTR = "url"
+    TEMP_FILENAME = "temp.dat"
 
     class Submission:
 
-        def __init__(self, user, filename=None, date=None):
+        def __init__(self, user, seconds_late):
             self.user = user
-            self.filename = filename
-            self.date = date
+            self.seconds_late = seconds_late
+            self.path = None
             self.exists = False
 
-        def setInfo(self, filename, date):
-            self.filename = filename
-            self.date = date
+        def setPath(self, path):
+            self.path = path
             self.exists = True
 
     def __init__(self,
@@ -46,17 +46,42 @@ class CanvasHelper:
         self.selected_course = None
         self.selected_assignment = None
 
-    def __getSubmissionDate(self, attachment):
-        return datetime.strptime(attachment[self.MODIFIED_AT_ATTR],
-                                 "%Y-%m-%dT%H:%M:%SZ")
+    def __printProgress(self, current_user, total_users):
+        sys.stdout.write("\r")
+        percent = int((current_user / total_users) * 100)
+        sys.stdout.write("({n}/{d}) {p}%".format(
+            n=current_user, d=total_users, p=percent))
+        sys.stdout.flush()
+
+    def __downloadSubmissionIntoTemp(self, url):
+        response = requests.get(url, stream=True)
+        with open(self.TEMP_FILENAME, "wb") as temp_file:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    temp_file.write(chunk)
+
+    def __getSubmissionDate(self, date_str):
+        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
 
     def __getLatestSubmission(self, attachments):
         if len(attachments) != 1:
             attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                     self.__getSubmissionDate(attachment)))
+                     self.__getSubmissionDate(attachment[CREATED_AT_ATTR])))
         return attachments[0]
+
+    def __updateAssignmentSelection(self):
+        idx = 0
+        for assn in self.selected_course.get_assignments():
+            self.assignments[idx] = assn
+            idx += 1
+
+    def getSubmissionsDirectory(self):
+        return (
+            "c" +
+            str(self.selected_course.id) + "_" +
+            str(self.selected_assignment.id) + "_Submissions")
 
     def showCourseSelection(self):
         print("\nAvailable Courses:")
@@ -69,14 +94,8 @@ class CanvasHelper:
     def getUsers(self):
         return self.selected_course.get_users()
 
-    def updateAssignmentSelection(self):
-        idx = 0
-        for assn in self.selected_course.get_assignments():
-            self.assignments[idx] = assn
-            idx += 1
-
     def showAssignmentSelection(self):
-        self.updateAssignmentSelection()
+        self.__updateAssignmentSelection()
         print("\nAvailable Assignments:")
         for aidx, assn in self.assignments.items():
             print(str(aidx) + ":", assn.name)
@@ -89,23 +108,26 @@ class CanvasHelper:
 
     def getSubmissions(self):
         submissions = []
-        directory_name = (
-            str(self.selected_course.id) + " " +
-            self.selected_assignment.name + " Submissions")
+        directory_name = self.getSubmissionsDirectory()
         submissions_downloaded = False
+        users = {user.id: user for user in self.getUsers()}
+        total_users = len(users)
+        current_user = 1
         if os.path.exists(directory_name):
             print("Submissions already downloaded. Delete '{}' to redownload."
                   .format(directory_name))
             submissions_downloaded = True
         else:
             os.makedirs(directory_name)
-        canvas_submissions = self.selected_course.list_submissions(
-            self.selected_assignment)
-        print("Linking Users...")
+            init_file = open(directory_name + "/__init__.py", "w")
+            init_file.close()
+        canvas_submissions = self.selected_assignment.get_submissions()
         for sub in canvas_submissions:
-            user = self.selected_course.get_user(sub.user_id)
-            submission = self.Submission(user)
-            new_filename = directory_name + "/" + str(user.id) + ".py"
+            self.__printProgress(current_user, total_users)
+            current_user += 1
+            user = users[sub.user_id]
+            submission = self.Submission(user, int(sub.seconds_late))
+            new_filename = directory_name + "/u" + str(user.id) + ".py"
             if self.ATTACHMENTS_ATTR in sub.attributes:
                 # Get the last submission attachment download url.
                 attachments = [att for att in
@@ -113,24 +135,24 @@ class CanvasHelper:
                                if att[self.FILENAME_ATTR].endswith(".py")]
                 if attachments:
                     latest_submission = self.__getLatestSubmission(attachments)
-                    sub_date = self.__getSubmissionDate(latest_submission)
                     url = latest_submission[self.URL_ATTR]
                     if not submissions_downloaded:
-                        raw_filename = wget.download(url)
-                        os.rename(raw_filename, new_filename)
-                    submission.setInfo(new_filename, sub_date)
+                        self.__downloadSubmissionIntoTemp(url)
+                        os.rename(self.TEMP_FILENAME, new_filename)
+                    submission.setPath(new_filename)
             submissions.append(submission)
         return submissions
 
-    def postSubmissionGrade(self, user, grade, tries=3):
+    def postSubmissionResult(self, user, result, tries=3):
         # Manual request is used instead of canvasapi to verify that grade
         # was uploaded successfully.
         url = (
             self.api_url +
             "api/v1/courses/{}/assignments/{}/submissions/{}".format(
                 self.selected_course.id, self.selected_assignment.id, user.id))
-        headers = {'Authorization': 'Bearer {}'.format(self.api_token)}
-        payload = {'submission': {'posted_grade': grade}}
+        headers = {"Authorization": "Bearer {}".format(self.api_token)}
+        payload = {"submission": {"posted_grade": result.grade},
+                   "comment": {"text_comment": str(result)}}
         response = requests.put(url, json=payload, headers=headers)
         for i in range(tries - 1):
             if response.status_code == 200:

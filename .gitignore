@@ -1,4 +1,5 @@
 secret.py
 /__pycache__/
 *Submissions/
+*.json
 *.txt

@@ -1,51 +1,27 @@
 from canvashelper import CanvasHelper
 from grader import PythonGrader
-from grader import PythonRubric
+from grader import TestSuite
 import os
-from termcolor import colored
+import util
 
 GRADING_TERM = "Spring 2018"
+DEFAULT_TEST_FILE = "testsuite.json"
 
-OUTPUT_SCHEME_FILE = "output_scheme.txt"
-INPUT_FILE = "input.txt"
-
-
-def get_output_scheme(file):
-    outputs = []
-    schemes = []
-    output = []
-    scheme = []
-    lines = file.readlines()
-    i = 0
-    while i < len(lines):
-        output_line = lines[i]
-        if output_line == "\n":
-            outputs.append(list(output))
-            schemes.append(list(scheme))
-            output = []
-            scheme = []
-            i += 1
-            continue
-        i += 1
-        scheme_line = int(lines[i].strip())
-        output.append(output_line.strip())
-        scheme.append(scheme_line)
-        i += 1
-    outputs.append(output)
-    schemes.append(scheme)
-    return outputs, schemes
-
-
-def lastname_lex(users):
-    return sorted(users, key=lambda user: user.name.split()[1].upper())
+# Termcolor constants
+TITLE = util.colored("Python Autograder for Canvas", "pink")
+SUCCESS = util.colored("SUCCESS", "green")
+FAIL = util.colored("FAIL", "red")
+GRADE_UPLOAD_REPORT = util.colored("Grade Upload Report", "purple")
+REPORT_MESSAGE = util.colored(
+    "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
 
 
 def main():
     # Initial information collection
-    ch = CanvasHelper()
-    print("\nPython Autograder for Canvas")
+    print(TITLE)
     print("Grading for {}".format(GRADING_TERM))
 
+    ch = CanvasHelper()
     ch.showCourseSelection()
     course_selection = int(input("\nWhich course would you like to select? "))
     ch.selectCourse(course_selection)
@@ -58,96 +34,51 @@ def main():
     print("Downloading submissions...")
     submissions = ch.getSubmissions()
 
-    assignment_points = ch.getAssignment().points_possible
+    # Test Suite Creation
 
-    # Rubric collection
-    outputs = None
-    schemes = None
-    print("Gathering output scheme...")
-    if os.path.isfile(OUTPUT_SCHEME_FILE):
-        with open(OUTPUT_SCHEME_FILE) as output_scheme_file:
-            outputs, schemes = get_output_scheme(output_scheme_file)
-    else:
-        print(("Please create an output scheme file\n"
-               "containing the following format as an example:\n"
-               "The next line is how many points this line is worth\n"
-               "5"
-               "Separate multiple outputs with a newline\n"
-               "10"
-               "\n"
-               "Now begins the second output.\n"
-               "10"
-               "Always end file with with a newline"
-               "75"
-               "\n"))
-        raise Exception(
-            "Expected Output Scheme file {} does not exist.".format(
-                OUTPUT_SCHEME_FILE))
-    inputs = None
-    print("Gathering input...")
-    if os.path.isfile(INPUT_FILE):
-        with open(INPUT_FILE) as input_file:
-            inputs = PythonRubric.linesToCollections(
-                input_file.readlines())
-            inputs = [("\n".join(i) + "\n").encode("utf-8")
-                      for i in inputs]
-    else:
-        print(("Please create an input file\n"
-               "containing the following format as an example:\n"
-               "The next line is how many points this line is worth\n"
-               "This is the first input"
-               "each line is a new argument"
-               "\n"
-               "This is the second input"
-               "Always end file with a newline"
-               "\n"))
-        raise Exception(
-            "Expected Input file {} does not exist.".format(
-                INPUT_FILE))
-
-    pr = PythonRubric(inputs, outputs, schemes, assignment_points)
+    testsuite = TestSuite.CreateWith(
+        json_file=DEFAULT_TEST_FILE,
+        requirement_directory=ch.getSubmissionsDirectory())
 
     # Grading
     print("Grading...")
-    pg = PythonGrader(submissions, pr)
-
+    pg = PythonGrader(submissions, testsuite)
     results = pg.getResults()
 
-    print("Showing grades.\n")
-    for user, result in results.items():
-        print(user.name, user.id, result.grade)
+    yn = input("\nShow final report? [y/n] ".format(
+        len(results))).lower()
+
+    if yn == "y":
+        # Final report for manual grade checking
+        total_report = len(results)
+        index = 1
+        print("\nFailed Grades ({}):\n".format(total_report))
+        for user in util.lastname_lex(results.keys()):
+            print(
+                util.colored("({}/{})".format(index, total_report), "red"),
+                util.colored(user.name, "white"),
+                util.colored(user.id, "purple"))
+            print(util.colored(results[user], "white"), "\n")
+            index += 1
+            q = input(REPORT_MESSAGE)
+            print()
+            if q == "q":
+                break
 
     yn = input("\n{} results collected. Upload grades? [y/n] ".format(
-        len(results)))
+        len(results))).lower()
 
-    if yn != "y":
-        return
-
-    # Grade uploading
-    failed_uploads = []
-    failed_grades = []
-    print(colored("Grade Upload Report", "magenta"))
-    for user, result in results.items():
-        grade = result.grade
-        print(user.name, grade, end=" ")
-        submission_successful = ch.postSubmissionGrade(user, grade)
-        if submission_successful:
-            print(colored("SUCCESS", "green"))
-        else:
-            print(colored("FAIL", "red"))
-            failed_uploads.append(user)
-        if grade == pg.default_grade:
-            failed_grades.append(user)
-
-    # Final report for manual grade checking
-    print("\nFailed Uploads ({}):".format(len(failed_uploads)))
-    for user in lastname_lex(failed_uploads):
-        print(user.name, user.id)
-    print("\nFailed Grades ({}):\n".format(len(failed_grades)))
-    for user in lastname_lex(failed_grades):
-        print(colored(user.name, "white"), colored(user.id, "magenta"))
-        print(results[user], "\n")
-        input("press [ENTER] for next grade result")
+    if yn == "y":
+        # Grade uploading
+        print(GRADE_UPLOAD_REPORT)
+        for user, result in results.items():
+            grade = result.grade
+            print(user.name, grade, end=" ")
+            submission_successful = ch.postSubmissionResult(user, result)
+            if submission_successful:
+                print(SUCCESS)
+            else:
+                print(FAIL)
 
 
 if __name__ == "__main__":
