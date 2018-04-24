@@ -1,4 +1,5 @@
 from canvashelper import CanvasHelper
+from difflib import get_close_matches
 from grader import PythonGrader
 from grader import TestSuite
 import os
@@ -15,6 +16,22 @@ GRADE_UPLOAD_REPORT = util.colored("Grade Upload Report", "purple")
 REPORT_MESSAGE = util.colored(
     "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
 
+def getStudentSelection(all_students):
+    option = input("Grade All students [ENTER] or [s]election?").upper()
+    selections = []
+    if option == "S":
+        names = [s.name for s in all_students]
+        query = input("Search Students or [ENTER] to finish: ")
+        while query != "":
+            matches = get_close_matches(query, names)
+            for index in range(3):
+                print("[{i}] {n}".format(i=index, n=matches[index]))
+            print("[ENTER] None")
+            selection = input()
+            if selection != "":
+                selections.append(matches[int(selection)])
+            
+    return selections
 
 def main():
     # Initial information collection
@@ -35,7 +52,6 @@ def main():
     submissions = ch.getSubmissions()
 
     # Test Suite Creation
-
     testsuite = TestSuite.CreateWith(
         json_file=DEFAULT_TEST_FILE,
         requirement_directory=ch.getSubmissionsDirectory())
@@ -43,6 +59,7 @@ def main():
     # Grading
     print("Grading...")
     pg = PythonGrader(submissions, testsuite)
+    students = getStudentSelection()  
     results = pg.getResults()
 
     yn = input("\nShow final report? [y/n] ".format(
