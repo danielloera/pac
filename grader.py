@@ -275,6 +275,13 @@ class PythonGrader:
             result.setErrors(result.python2_err, python3_err)
         return result
 
+    def limitStudentsTo(self, students=None):
+        if students is None:
+            students = set()
+        if students:
+            self.submissions = [
+                sub for sub in self.submissions if sub.user.name in students]
+
     def getResults(self):
         print(self.GRADES)
         results = {}

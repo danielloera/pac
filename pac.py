@@ -17,20 +17,23 @@ REPORT_MESSAGE = util.colored(
     "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
 
 def getStudentSelection(all_students):
-    option = input("Grade All students [ENTER] or [s]election?").upper()
-    selections = []
+    option = input("Grade All students [ENTER] or [s]election? ").upper()
+    selections = set()
     if option == "S":
         names = [s.name for s in all_students]
-        query = input("Search Students or [ENTER] to finish: ")
+        query = ":)"
         while query != "":
-            matches = get_close_matches(query, names)
+            query = input("Search Students or [ENTER] to finish: ")
+            matches = get_close_matches(query, names, 3, 0.1)
+            if not matches:
+                print("No near matches. Try Again.")
+                continue
             for index in range(3):
                 print("[{i}] {n}".format(i=index, n=matches[index]))
             print("[ENTER] None")
-            selection = input()
+            selection = input("selection: ")
             if selection != "":
-                selections.append(matches[int(selection)])
-            
+                selections.add(matches[int(selection)])
     return selections
 
 def main():
@@ -59,7 +62,8 @@ def main():
     # Grading
     print("Grading...")
     pg = PythonGrader(submissions, testsuite)
-    students = getStudentSelection()  
+    students_to_grade = getStudentSelection(ch.getUsers())
+    pg.limitStudentsTo(students_to_grade)
     results = pg.getResults()
 
     yn = input("\nShow final report? [y/n] ".format(
