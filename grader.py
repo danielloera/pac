@@ -66,13 +66,12 @@ class TestSuite:
         def hasRequirements(self):
             return not (not self.requirements)
 
-    def __init__(self, requirement_directory, max_score, tests):
-        self.requirement_directory = requirement_directory
+    def __init__(self, max_score, tests):
         self.max_score = max_score
         self.tests = tests
 
     @classmethod
-    def CreateWith(cls, json_file=None, requirement_directory=None,):
+    def CreateWith(cls, json_file=None):
         main_dict = json.load(open(json_file))
         tests = []
         max_score = main_dict[cls.MAX_SCORE]
@@ -86,7 +85,7 @@ class TestSuite:
                                   module,
                                   code,
                                   requirements))
-        return cls(requirement_directory, max_score, tests)
+        return cls(max_score, tests)
 
     def addRequirementsFrom(self, test):
         for requirement in test.requirements:
@@ -94,7 +93,7 @@ class TestSuite:
             req_rename = requirement.get(self.REQ_RENAME, None)
             req_rename = req_file if req_rename is None else req_rename
             shutil.copy(
-                req_file, self.requirement_directory + "/" + req_rename)
+                req_file, req_rename)
 
 
 class PythonGrader:
@@ -218,7 +217,7 @@ class PythonGrader:
                 if user_line != expected_line:
                     score -= scheme[j]
                     result.addReason(
-                        "User output: {user}\nExpected: {expected}".format(
+                        "User output-> {user}\nExpected-> {expected}".format(
                             user=user_line, expected=expected_line))
             if user_len < expected_len:
                 for i in range(expected_len - user_len + 1, expected_len):
@@ -228,6 +227,20 @@ class PythonGrader:
                             expected_output[i]))
         result.setGrade(score)
         return result
+
+    def __getOutputLines(self, output):
+        lines = output.decode("utf-8").split("\n")
+        if not lines:
+            return lines
+        index = 0
+        while index < len(lines) and lines[index].strip() == "":
+            index += 1
+        front_empty = index
+        index = len(lines)
+        while index >= 0 and lines[index - 1].strip() == "":
+            index -= 1
+        back_empty = index
+        return lines[front_empty:back_empty]
 
     def __runTests(self, python_ver, submission):
         user_outputs = []
@@ -254,9 +267,7 @@ class PythonGrader:
                     python2_err=err_str,
                     python3_err=err_str,
                     grade=self.default_grade)
-            output_lines = output.decode("utf-8").split("\n")
-            if output_lines[-1] == "":
-                output_lines = output_lines[:-1]
+            output_lines = self.__getOutputLines(output)
             user_outputs.extend([output_lines])
         result = self.__grade(user_outputs)
         result.setLateness(self.__getLateness(submission))

@@ -16,6 +16,7 @@ GRADE_UPLOAD_REPORT = util.colored("Grade Upload Report", "purple")
 REPORT_MESSAGE = util.colored(
     "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
 
+
 def getStudentSelection(all_students):
     option = input("Grade All students [ENTER] or [s]election? ").upper()
     selections = set()
@@ -36,6 +37,7 @@ def getStudentSelection(all_students):
                 selections.add(matches[int(selection)])
     return selections
 
+
 def main():
     # Initial information collection
     print(TITLE)
@@ -55,9 +57,7 @@ def main():
     submissions = ch.getSubmissions()
 
     # Test Suite Creation
-    testsuite = TestSuite.CreateWith(
-        json_file=DEFAULT_TEST_FILE,
-        requirement_directory=ch.getSubmissionsDirectory())
+    testsuite = TestSuite.CreateWith(json_file=DEFAULT_TEST_FILE)
 
     # Grading
     print("Grading...")
