@@ -114,9 +114,12 @@ class CanvasHelper:
         total_users = len(users)
         current_user = 1
         if os.path.exists(directory_name):
-            print("Submissions already downloaded. Delete '{}' to redownload."
-                  .format(directory_name))
-            submissions_downloaded = True
+            print("Submissions already downloaded.")
+            yn = input("Re-download? [y/n] ").upper()
+            if yn == "Y":
+                submissions_downloaded = False
+            elif yn == "N":
+                submissions_downloaded = True
         else:
             os.makedirs(directory_name)
             init_file = open(directory_name + "/__init__.py", "w")
