@@ -79,7 +79,8 @@ class TestSuite:
             module = test_dict.get(cls.MODULE, None)
             code = test_dict.get(cls.CODE, None)
             requirements = test_dict.get(cls.REQUIREMENTS, None)
-            tests.append(cls.Test(test_dict[cls.INPUT],
+            input_ = test_dict.get(cls.INPUT, [""])
+            tests.append(cls.Test(input_,
                                   test_dict[cls.OUTPUT],
                                   test_dict[cls.SCHEME],
                                   module,
