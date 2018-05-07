@@ -60,7 +60,6 @@ def main():
     testsuite = TestSuite.CreateWith(json_file=DEFAULT_TEST_FILE)
 
     # Grading
-    print("Grading...")
     pg = PythonGrader(submissions, testsuite)
     students_to_grade = getStudentSelection(ch.getUsers())
     pg.limitStudentsTo(students_to_grade)

@@ -115,8 +115,8 @@ class CanvasHelper:
         current_user = 1
         if os.path.exists(directory_name):
             print("Submissions already downloaded.")
-            yn = input("Re-download? [y/n] ").upper()
-            if yn != "Y":
+            yn = input("Re-download? [y/n] ").lower()
+            if yn != "y":
                 submissions_downloaded = True
         else:
             os.makedirs(directory_name)

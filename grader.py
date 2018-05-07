@@ -22,6 +22,9 @@ def alarm_handler(signum, frame):
 
 class TestSuite:
 
+    class TestSuiteException(Exception):
+        pass
+
     MAX_SCORE = "max_score"
     TESTS = "tests"
     INPUT = "input"
@@ -80,6 +83,10 @@ class TestSuite:
             code = test_dict.get(cls.CODE, None)
             requirements = test_dict.get(cls.REQUIREMENTS, None)
             input_ = test_dict.get(cls.INPUT, [""])
+            if (cls.OUTPUT not in test_dict or
+                    cls.SCHEME not in test_dict):
+                raise cls.TestSuiteException(
+                    "Tests must contain 'output' AND 'scheme'.")
             tests.append(cls.Test(input_,
                                   test_dict[cls.OUTPUT],
                                   test_dict[cls.SCHEME],
