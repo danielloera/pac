@@ -25,3 +25,11 @@ def colored(output, color):
 
 def lastname_lex(users):
     return sorted(users, key=lambda user: user.name.split()[1].upper())
+
+
+def get_selection(items, item_type):
+    for i, item in enumerate(items):
+        print("{i}: {name}".format(i=i, name=item.name))
+    print()
+    return int(input(
+        "Which {} would you like to select? ".format(item_type)))

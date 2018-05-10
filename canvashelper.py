@@ -1,6 +1,7 @@
 import secret
 from canvasapi import Canvas
 from datetime import datetime
+from difflib import get_close_matches
 import json
 import os
 import requests
@@ -40,9 +41,8 @@ class CanvasHelper:
         self.canvas = Canvas(api_url, api_token)
         self.api_url = api_url
         self.api_token = api_token
-        self.courses = {idx: self.canvas.get_course(course) for idx, course in
-                        zip(range(len(course_ids)), course_ids)}
-        self.assignments = {}
+        self.courses = []
+        self.assignments = []
         self.selected_course = None
         self.selected_assignment = None
 
@@ -68,14 +68,9 @@ class CanvasHelper:
             attachments = sorted(
                 attachments,
                 key=(lambda attachment:
-                     self.__getSubmissionDate(attachment[CREATED_AT_ATTR])))
+                     self.__getSubmissionDate(
+                         attachment[self.CREATED_AT_ATTR])))
         return attachments[0]
-
-    def __updateAssignmentSelection(self):
-        idx = 0
-        for assn in self.selected_course.get_assignments():
-            self.assignments[idx] = assn
-            idx += 1
 
     def getSubmissionsDirectory(self):
         return (
@@ -83,10 +78,9 @@ class CanvasHelper:
             str(self.selected_course.id) + "_" +
             str(self.selected_assignment.id) + "_Submissions")
 
-    def showCourseSelection(self):
-        print("\nAvailable Courses:")
-        for cidx, course in self.courses.items():
-            print(str(cidx) + ":", course.name)
+    def getCourses(self):
+        self.courses = [self.canvas.get_course(cid) for cid in self.course_ids]
+        return self.courses
 
     def selectCourse(self, selection):
         self.selected_course = self.courses[selection]
@@ -94,17 +88,34 @@ class CanvasHelper:
     def getUsers(self):
         return self.selected_course.get_users()
 
-    def showAssignmentSelection(self):
-        self.__updateAssignmentSelection()
-        print("\nAvailable Assignments:")
-        for aidx, assn in self.assignments.items():
-            print(str(aidx) + ":", assn.name)
+    def getAssignments(self):
+        self.assignments = [
+            assn for assn in self.selected_course.get_assignments()]
+        return self.assignments
 
     def selectAssignment(self, selection):
         self.selected_assignment = self.assignments[selection]
 
-    def getAssignment(self):
+    def getSelectedAssignment(self):
         return self.selected_assignment
+
+    def getStudentSubset(self):
+        subset = set()
+        names = [s.name for s in self.getUsers()]
+        query = ":)"
+        while query != "":
+            query = input("Search Students or [ENTER] to finish: ")
+            matches = get_close_matches(query, names, 3, 0.1)
+            if not matches:
+                print("No near matches. Try Again.")
+                continue
+            for index in range(3):
+                print("[{i}] {n}".format(i=index, n=matches[index]))
+            print("[ENTER] None")
+            selection = input("selection: ")
+            if selection != "":
+                subset.add(matches[int(selection)])
+        return subset
 
     def getSubmissions(self):
         submissions = []
@@ -142,6 +153,7 @@ class CanvasHelper:
                         os.rename(self.TEMP_FILENAME, new_filename)
                     submission.setPath(new_filename)
             submissions.append(submission)
+        print()
         return submissions
 
     def postSubmissionResult(self, user, result, tries=3):

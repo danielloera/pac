@@ -87,12 +87,13 @@ class TestSuite:
                     cls.SCHEME not in test_dict):
                 raise cls.TestSuiteException(
                     "Tests must contain 'output' AND 'scheme'.")
-            tests.append(cls.Test(input_,
-                                  test_dict[cls.OUTPUT],
-                                  test_dict[cls.SCHEME],
-                                  module,
-                                  code,
-                                  requirements))
+            output = test_dict[cls.OUTPUT]
+            scheme = test_dict[cls.SCHEME]
+            if len(output) != len(scheme):
+                raise cls.TestSuiteException(
+                    "'output' and 'scheme' must be the same length.")
+            tests.append(cls.Test(input_, output, scheme,
+                                  module, code, requirements))
         return cls(max_score, tests)
 
     def addRequirementsFrom(self, test):
