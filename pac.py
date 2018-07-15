@@ -4,7 +4,6 @@ from grader import TestSuite
 import os
 import util
 
-GRADING_TERM = "Spring 2018"
 DEFAULT_TEST_FILE = "testsuite.json"
 
 # util.colored constants
@@ -19,7 +18,6 @@ REPORT_MESSAGE = util.colored(
 def main():
     # Initial information collection
     print(TITLE)
-    print("Grading for {}\n".format(GRADING_TERM))
 
     ch = CanvasHelper()
     course_selection = util.get_selection(ch.getCourses(), "Course")
@@ -44,9 +42,7 @@ def main():
         pg.limitStudentsTo(student_selection)
     results = pg.getResults()
 
-    yn = input("\nShow final report? [y] or [ENTER] to skip ".format(
-        len(results))).lower()
-
+    yn = input("\nShow final report? [y] or [ENTER] to skip ").lower()
     if yn == "y":
         # Final report for manual grade checking
         total_report = len(results)
@@ -67,7 +63,6 @@ def main():
     yn = input(
         "\n{} results collected. Upload grades? [y] or [ENTER] to skip".format(
             len(results))).lower()
-
     if yn == "y":
         # Grade uploading
         print(GRADE_UPLOAD_REPORT)

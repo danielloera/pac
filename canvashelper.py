@@ -1,16 +1,12 @@
-import secret
 from canvasapi import Canvas
 from datetime import datetime
 from difflib import get_close_matches
+import config
 import json
 import os
 import requests
+import secret
 import sys
-
-default_api_url = "https://utexas.instructure.com/"
-
-# Courses helper will inspect. Must be updated every semester.
-default_course_ids = [10170000001214449, 10170000001214450]
 
 
 class CanvasHelper:
@@ -33,13 +29,15 @@ class CanvasHelper:
             self.path = path
             self.exists = True
 
-    def __init__(self,
-                 api_url=default_api_url,
-                 api_token=secret.API_TOKEN,
-                 course_ids=default_course_ids):
-        self.course_ids = course_ids
-        self.canvas = Canvas(api_url, api_token)
-        self.api_url = api_url
+    def __init__(self, api_token=secret.API_TOKEN):
+        cfg = config.get()
+        if config.API_URL not in cfg:
+            cfg = config.update_api_url(cfg)
+        self.api_url = cfg[config.API_URL]
+        self.canvas = Canvas(self.api_url, api_token)
+        if config.COURSE_IDS not in cfg:
+            cfg = config.update_course_ids(cfg, self.canvas)
+        self.course_ids = cfg[config.COURSE_IDS]
         self.api_token = api_token
         self.courses = []
         self.assignments = []
