@@ -3,3 +3,5 @@ secret.py
 *Submissions/
 *.json
 *.txt
+*.config
+
