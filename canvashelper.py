@@ -135,7 +135,9 @@ class CanvasHelper:
         for sub in canvas_submissions:
             self.__printProgress(current_user, total_users)
             current_user += 1
-            user = users[sub.user_id]
+            user = users.get(sub.user_id, None)
+            if not user:
+                continue
             submission = self.Submission(user, int(sub.seconds_late))
             new_filename = directory_name + "/u" + str(user.id) + ".py"
             if self.ATTACHMENTS_ATTR in sub.attributes:

@@ -39,6 +39,7 @@ def main():
     pg = PythonGrader(submissions, testsuite)
     option = input("Grade All students [ENTER] or [s]election? ").lower()
     if option == "s":
+        print("Downloading Student data...")
         student_selection = ch.getStudentSubset()
         pg.limitStudentsTo(student_selection)
     results = pg.getResults()

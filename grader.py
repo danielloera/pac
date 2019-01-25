@@ -25,7 +25,7 @@ class TestSuite:
     class TestSuiteException(Exception):
         pass
 
-    MAX_SCORE = "max_score"
+    MAX_GRADE = "max_grade"
     TESTS = "tests"
     INPUT = "input"
     OUTPUT = "output"
@@ -67,15 +67,17 @@ class TestSuite:
         def hasRequirements(self):
             return not (not self.requirements)
 
-    def __init__(self, max_score, tests):
+    def __init__(self, max_score, max_grade, tests):
         self.max_score = max_score
+        self.max_grade = max_grade
         self.tests = tests
 
     @classmethod
     def CreateWith(cls, json_file=None):
         main_dict = json.load(open(json_file))
         tests = []
-        max_score = main_dict[cls.MAX_SCORE]
+        max_score = 0
+        max_grade = main_dict[cls.MAX_GRADE]
         for test_dict in main_dict[cls.TESTS]:
             module = test_dict.get(cls.MODULE, "__main__")
             code = test_dict.get(cls.CODE, None)
@@ -87,18 +89,18 @@ class TestSuite:
                     "Tests must contain 'output' AND 'scheme'.")
             output = test_dict[cls.OUTPUT]
             scheme = test_dict[cls.SCHEME]
+            max_score += sum(scheme)
             if len(output) != len(scheme):
                 raise cls.TestSuiteException(
                     "'output' and 'scheme' must be the same length.")
             tests.append(cls.Test(input_, output, scheme,
                                   module, code, requirements))
-        return cls(max_score, tests)
+        return cls(max_score, max_grade, tests)
 
     def addRequirementsFrom(self, test):
         for requirement in test.requirements:
             req_file = requirement[self.REQ_FILE]
-            req_rename = requirement.get(self.REQ_RENAME, None)
-            req_rename = req_file if req_rename is None else req_rename
+            req_rename = requirement.get(self.REQ_RENAME, req_file)
             shutil.copy(
                 req_file, req_rename)
 
@@ -108,6 +110,7 @@ class PythonGrader:
     LATE = util.colored("LATE", "yellow")
     MISSING = util.colored("MISSING", "red")
     GRADES = util.colored("Grades:", "purple")
+    DIFF_MIN = 0.9
 
     class Result:
 
@@ -204,8 +207,8 @@ class PythonGrader:
                   "({} days)".format(days), end=" ")
             max_days = 1 / self.late_percent
             if days >= max_days:
-                return self.testsuite.max_score
-            return self.testsuite.max_score * self.late_percent * days
+                return self.testsuite.max_grade
+            return self.testsuite.max_grade * self.late_percent * days
         return 0
 
     def __grade(self, user_outputs):
@@ -221,7 +224,7 @@ class PythonGrader:
             for j in range(min(user_len, expected_len)):
                 user_line = user_output[j].strip()
                 expected_line = expected_output[j].strip()
-                if user_line != expected_line:
+                if util.get_diff_ratio(user_line, expected_line) < self.DIFF_MIN:
                     score -= scheme[j]
                     result.addReason(
                         "User output-> {user}\nExpected-> {expected}".format(
@@ -232,7 +235,9 @@ class PythonGrader:
                     result.addReason(
                         "User output does not contain: {}".format(
                             expected_output[i]))
-        result.setGrade(score)
+        result.setGrade(
+            (float(score) / self.testsuite.max_score) *
+                self.testsuite.max_grade)
         return result
 
     def __getOutputLines(self, output):

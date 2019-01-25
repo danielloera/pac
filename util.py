@@ -1,3 +1,5 @@
+from difflib import SequenceMatcher
+
 class Colors:
     reset = "\033[0m"
     fg = {
@@ -35,3 +37,6 @@ def get_selection(items, item_type):
     print()
     return int(input(
         "Which {} would you like to select? ".format(item_type)))
+
+def get_diff_ratio(string_a, string_b):
+    return SequenceMatcher(lambda x: x == " ", string_a, string_b).ratio()
