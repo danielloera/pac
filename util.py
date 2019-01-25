@@ -28,6 +28,8 @@ def lastname_lex(users):
 
 
 def get_selection(items, item_type):
+    if len(items) == 1:
+        return 0
     for i, item in enumerate(items):
         print("{i}: {name}".format(i=i, name=item.name))
     print()

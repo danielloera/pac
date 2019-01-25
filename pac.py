@@ -22,7 +22,7 @@ def main():
     ch = CanvasHelper()
     course_selection = util.get_selection(ch.getCourses(), "Course")
     ch.selectCourse(course_selection)
-    print()
+    print(util.colored("Grading " + ch.selected_course.name, "lightgreen"))
 
     assn_selection = util.get_selection(ch.getAssignments(), "Assignment")
     ch.selectAssignment(assn_selection)
