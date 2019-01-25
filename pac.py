@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from canvashelper import CanvasHelper
 from grader import PythonGrader
 from grader import TestSuite
