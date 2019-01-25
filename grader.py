@@ -39,8 +39,6 @@ class TestSuite:
     class Test:
 
         def __createCmdTemplate(self, module, code):
-            if module is None:
-                module = "__main__"
             if not code:
                 return "import {imp} as {mod}".format(imp="{imp}", mod=module)
             else:
@@ -79,7 +77,7 @@ class TestSuite:
         tests = []
         max_score = main_dict[cls.MAX_SCORE]
         for test_dict in main_dict[cls.TESTS]:
-            module = test_dict.get(cls.MODULE, None)
+            module = test_dict.get(cls.MODULE, "__main__")
             code = test_dict.get(cls.CODE, None)
             requirements = test_dict.get(cls.REQUIREMENTS, None)
             input_ = test_dict.get(cls.INPUT, [""])
