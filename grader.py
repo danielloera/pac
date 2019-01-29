@@ -303,7 +303,8 @@ class PythonGrader:
             students = set()
         if students:
             self.submissions = [
-                sub for sub in self.submissions if sub.user.name in students]
+                sub for sub in self.submissions
+                if sub.user.name.lower() in students]
 
     def getResults(self):
         print(self.GRADES)

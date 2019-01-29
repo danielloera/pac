@@ -13,7 +13,7 @@ SUCCESS = util.colored("SUCCESS", "green")
 FAIL = util.colored("FAIL", "red")
 GRADE_UPLOAD_REPORT = util.colored("Grade Upload Report", "purple")
 REPORT_MESSAGE = util.colored(
-    "press [ENTER] for next grade result or [q] to skip ", "lightgreen")
+    "press [ENTER] for next grade result or [q] to quit ", "lightgreen")
 
 
 def main():
@@ -44,7 +44,7 @@ def main():
         pg.limitStudentsTo(student_selection)
     results = pg.getResults()
 
-    yn = input("\nShow final report? [y] or [ENTER] to skip ").lower()
+    yn = input("\nShow final report? [y/N] to skip ").lower()
     if yn == "y":
         # Final report for manual grade checking
         total_report = len(results)
@@ -63,7 +63,7 @@ def main():
                 break
 
     yn = input(
-        "\n{} results collected. Upload grades? [y] or [ENTER] to skip".format(
+        "\n{} results collected. Upload grades? [y/N]".format(
             len(results))).lower()
     if yn == "y":
         # Grade uploading

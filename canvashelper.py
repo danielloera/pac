@@ -99,10 +99,10 @@ class CanvasHelper:
 
     def getStudentSubset(self):
         subset = set()
-        names = [s.name for s in self.getUsers()]
+        names = [s.name.lower() for s in self.getUsers()]
         query = ":)"
         while query != "":
-            query = input("Search Students or [ENTER] to finish: ")
+            query = input("Search Students or [ENTER] to finish: ").lower()
             matches = get_close_matches(query, names, 3, 0.1)
             if not matches:
                 print("No near matches. Try Again.")
@@ -124,7 +124,7 @@ class CanvasHelper:
         current_user = 1
         if os.path.exists(directory_name):
             print("Submissions already downloaded.")
-            yn = input("Re-download? [y/n] ").lower()
+            yn = input("Re-download? [Y/n] ").lower()
             if yn != "y":
                 submissions_downloaded = True
         else:

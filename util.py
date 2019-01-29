@@ -39,4 +39,7 @@ def get_selection(items, item_type):
         "Which {} would you like to select? ".format(item_type)))
 
 def get_diff_ratio(string_a, string_b):
-    return SequenceMatcher(lambda x: x == " ", string_a, string_b).ratio()
+    return SequenceMatcher(
+            lambda x: x == " ",
+            string_a.replace(" ", ""),
+            string_b.replace(" ", "")).ratio()
